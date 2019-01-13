@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <regex>
 
 #include "ast.h"
 #include "parser.tab.hh"
@@ -28,6 +29,10 @@ public:
 private:
   std::unique_ptr<Parser> parser_;
   yyscan_t scanner_;
+
+  std::string replace_text(std::string input, std::regex &pattern, const char *replace);
+  std::string insert_semicolon(std::string input);
+
 };
 
 } // namespace bpftrace
