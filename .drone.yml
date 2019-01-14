@@ -1,0 +1,39 @@
+kind: pipeline
+name: amd64
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build
+  image: docker
+  commands:
+  - docker build -t bpftrace-builder-fedora29 -f docker/Dockerfile.fedora29 docker/
+
+trigger:
+  branch:
+  - ci
+  event:
+  - push
+
+---
+kind: pipeline
+name: arm64
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: build
+  image: docker
+  commands:
+  - docker build -t bpftrace-builder-fedora29 -f docker/Dockerfile.fedora29 docker/
+
+trigger:
+  branch:
+  - ci
+  event:
+  - push
+
