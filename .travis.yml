@@ -10,14 +10,14 @@ language:
 services:
   - docker
 
-arch:
-  - amd64
-  - arm64
-
 os: linux
 
 matrix:
-  include:
+ arch:
+  - amd64
+  - arm64
+
+ include:
     # Certain tests are disabled on our LLVM 5 builds because they are flaky
     # when bpftrace is compiled with musl libc. They should still be capable
     # of passing occasionally.
