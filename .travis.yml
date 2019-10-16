@@ -11,8 +11,8 @@ services:
   - docker
 
 arch:
-  - amd64
   - arm64
+  - amd64
 
 os: linux
 
@@ -41,6 +41,10 @@ env:
   - LLVM_VERSION=8 BASE=bionic TYPE=Debug RUN_ALL_TESTS=1
   # "LLVM 8 Release"
   - LLVM_VERSION=8 BASE=bionic TYPE=Release RUN_ALL_TESTS=1
+
+matrix:
+  allow_failures:
+    - arch: arm64
 
 install:
   - sudo apt-get install -y linux-headers-$(uname -r)
