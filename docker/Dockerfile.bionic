@@ -34,13 +34,13 @@ RUN apt-get update && apt-get install -y \
 
 # libbpfcc-dev in Ubuntu 18.04 & 18.10 do not meet the requirements for
 # bpftrace, so we use upstream bcc package.
-RUN [[ `uname -m` = 'x86_64' ]] && \
+RUN [ `uname -m` = 'x86_64' ] && \
     echo "deb https://repo.iovisor.org/apt/bionic bionic main" | tee /etc/apt/sources.list.d/iovisor.list && \
     apt-get install -y libbcc
 
 # Upstream bcc only packages for x86_64, so we build from source for arm64. Peg the build to bcc v0.11.0.
 WORKDIR /
-RUN [[ `uname -m` = 'arm64' ]] && \
+RUN [ `uname -m` = 'arm64' ] && \
     curl -L https://github.com/iovisor/bcc/archive/v0.11.0.tar.gz --output /bcc.tar.gz && \
     tar xvf /bcc.tar.gz && \
     mv bcc-0.11.0 bcc && \
