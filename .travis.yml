@@ -5,7 +5,7 @@ dist: bionic
 language:
   # Trick Travis into using bionic (see https://travis-ci.community/t/for-dist-bionic-xenial-vm-is-used-instead-with-language-rust/4487/3)
   # We're building on Docker, so the actual laguange doesn't matter.
-  - python
+  - c
 
 services:
   - docker
