@@ -10,6 +10,12 @@ language:
 services:
   - docker
 
+arch:
+  - amd64
+  - arm64
+
+os: linux
+
 matrix:
   include:
     # Certain tests are disabled on our LLVM 5 builds because they are flaky
