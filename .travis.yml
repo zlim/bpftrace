@@ -44,7 +44,7 @@ matrix:
       env: LLVM_VERSION=8 BASE=bionic TYPE=Release RUN_ALL_TESTS=1
 
 install:
-  - sudo apt-get install linux-headers-$(uname -r)
+  - sudo apt-get install -y linux-headers-$(uname -r)
   - docker build --build-arg LLVM_VERSION=$LLVM_VERSION -t bpftrace-builder-$BASE-llvm-$LLVM_VERSION -f docker/Dockerfile.$BASE docker/
 
 script:
