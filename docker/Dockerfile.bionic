@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
       git \
       libelf-dev \
       zlib1g-dev \
-      libbpfcc \
+      libbcc \
       clang-${LLVM_VERSION} \
       libclang-${LLVM_VERSION}-dev \
       libclang-common-${LLVM_VERSION}-dev \
