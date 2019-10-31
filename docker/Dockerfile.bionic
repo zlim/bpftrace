@@ -46,9 +46,9 @@ RUN [ `uname -m` = 'aarch64' ] && \
     { curl -L https://github.com/iovisor/bcc/releases/download/v0.11.0/bcc-src-with-submodule.tar.gz --output /bcc.tar.gz && \
       tar xvf /bcc.tar.gz && \
       cd /bcc && mkdir build && cd build && cmake .. && make install -j4 && \
-      cp src/cc/libbcc.a /usr/local/lib64/libbcc.a && \
-      cp src/cc/libbcc-loader-static.a /usr/local/lib64/libbcc-loader-static.a && \
-      cp src/cc/libbpf.a /usr/local/lib64/libbpf.a; } || \
+      cp src/cc/libbcc.a /usr/local/lib/libbcc.a && \
+      cp src/cc/libbcc-loader-static.a /usr/local/lib/libbcc-loader-static.a && \
+      cp src/cc/libbpf.a /usr/local/lib/libbpf.a; } || \
     echo "skipped arm64-only step"
 
 
