@@ -42,7 +42,7 @@ RUN [ `uname -m` = 'x86_64' ] && \
 # Upstream bcc only packages for x86_64, so we build from source for arm64.
 # Peg the build to bcc v0.11.0.
 WORKDIR /
-RUN [ `uname -m` = 'arm64' ] && \
+RUN [ `uname -m` = 'aarch64' ] && \
     { curl -L https://github.com/iovisor/bcc/archive/v0.11.0.tar.gz --output /bcc.tar.gz && \
       tar xvf /bcc.tar.gz && \
       mv bcc-0.11.0 bcc && \
