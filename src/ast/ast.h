@@ -6,15 +6,16 @@
 #include <string>
 #include <vector>
 
+#include "mapkey.h"
 #include "types.h"
 #include "usdt.h"
 
 namespace bpftrace {
 namespace ast {
 
-class Visitor;
+class VisitorBase;
 
-#define DEFINE_ACCEPT void accept(Visitor &v) override;
+#define DEFINE_ACCEPT void accept(VisitorBase &v) override;
 
 /**
  * Copy the node but leave all it's child members uninitialized, effecitvely
@@ -38,7 +39,7 @@ public:
 
   virtual ~Node() = default;
 
-  virtual void accept(Visitor &v) = 0;
+  virtual void accept(VisitorBase &v) = 0;
 
   location loc;
 };
@@ -182,6 +183,7 @@ public:
   ~Map();
 
   std::string ident;
+  MapKey key_type;
   ExpressionList *vargs = nullptr;
   bool skip_key_validation = false;
 
@@ -497,6 +499,7 @@ public:
   std::string target;
   std::string ns;
   std::string func;
+  std::string pin;
   usdt_probe_entry usdt; // resolved USDT entry, used to support arguments with wildcard matches
   int freq = 0;
   uint64_t len = 0;   // for watchpoint probes, the width of watched addr

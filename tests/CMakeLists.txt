@@ -1,10 +1,4 @@
 add_compile_options("-Wno-undef")
-add_compile_options("-Wno-switch-default")
-add_compile_options("-Wno-switch-enum")
-
-if(HAVE_BFD_DISASM)
-  set(BFD_DISASM_SRC ${CMAKE_SOURCE_DIR}/src/bfd-disasm.cpp)
-endif()
 
 if (STATIC_LIBC)
   # STATIC_LIBC will set linker flags to -static. We don't want this for
@@ -22,11 +16,11 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tests/codegen_includes.cpp
     -P ${CMAKE_SOURCE_DIR}/tests/codegen/generate_codegen_includes.cmake
   DEPENDS ${CODEGEN_SOURCES})
 
-if(${LLVM_VERSION} VERSION_LESS 11.0.0)
+if(${LLVM_VERSION_MAJOR} VERSION_EQUAL 12)
   set(CODEGEN_SRC ${CMAKE_BINARY_DIR}/tests/codegen_includes.cpp)
 else()
   set(CODEGEN_SRC "")
-  message("Disabled codegen test for LLVM >= 11")
+  message(STATUS "Disabled codegen test for LLVM != 12")
 endif()
 
 add_executable(bpftrace_test
@@ -38,94 +32,19 @@ add_executable(bpftrace_test
   main.cpp
   mocks.cpp
   parser.cpp
+  portability_analyser.cpp
   procmon.cpp
   probe.cpp
+  required_resources.cpp
   semantic_analyser.cpp
   tracepoint_format_parser.cpp
   utils.cpp
 
   ${CODEGEN_SRC}
-
-  ${CMAKE_SOURCE_DIR}/src/attached_probe.cpp
-  ${CMAKE_SOURCE_DIR}/src/bpftrace.cpp
-  ${CMAKE_SOURCE_DIR}/src/bpffeature.cpp
-  ${CMAKE_SOURCE_DIR}/src/btf.cpp
-  ${CMAKE_SOURCE_DIR}/src/child.cpp
-  ${CMAKE_SOURCE_DIR}/src/clang_parser.cpp
-  ${CMAKE_SOURCE_DIR}/src/disasm.cpp
-  ${CMAKE_SOURCE_DIR}/src/driver.cpp
-  ${CMAKE_SOURCE_DIR}/src/fake_map.cpp
-  ${CMAKE_SOURCE_DIR}/src/log.cpp
-  ${CMAKE_SOURCE_DIR}/src/map.cpp
-  ${CMAKE_SOURCE_DIR}/src/mapkey.cpp
-  ${CMAKE_SOURCE_DIR}/src/output.cpp
-  ${CMAKE_SOURCE_DIR}/src/printf.cpp
-  ${CMAKE_SOURCE_DIR}/src/probe_matcher.cpp
-  ${CMAKE_SOURCE_DIR}/src/procmon.cpp
-  ${CMAKE_SOURCE_DIR}/src/resolve_cgroupid.cpp
-  ${CMAKE_SOURCE_DIR}/src/signal.cpp
-  ${CMAKE_SOURCE_DIR}/src/struct.cpp
-  ${CMAKE_SOURCE_DIR}/src/tracepoint_format_parser.cpp
-  ${CMAKE_SOURCE_DIR}/src/types.cpp
-  ${CMAKE_SOURCE_DIR}/src/usdt.cpp
-  ${CMAKE_SOURCE_DIR}/src/utils.cpp
-  ${BFD_DISASM_SRC}
 )
 
-if (HAVE_LIBBPF_MAP_BATCH)
-  target_compile_definitions(bpftrace_test PRIVATE HAVE_LIBBPF_MAP_BATCH)
-endif()
-
-if(HAVE_NAME_TO_HANDLE_AT)
-  target_compile_definitions(bpftrace_test PRIVATE HAVE_NAME_TO_HANDLE_AT=1)
-endif(HAVE_NAME_TO_HANDLE_AT)
-if(HAVE_BCC_PROG_LOAD)
-  target_compile_definitions(bpftrace_test PRIVATE HAVE_BCC_PROG_LOAD)
-endif(HAVE_BCC_PROG_LOAD)
-if(HAVE_BCC_CREATE_MAP)
-  target_compile_definitions(bpftrace_test PRIVATE HAVE_BCC_CREATE_MAP)
-endif(HAVE_BCC_CREATE_MAP)
-if (LIBBPF_BTF_DUMP_FOUND)
-  target_compile_definitions(bpftrace_test PRIVATE HAVE_LIBBPF_BTF_DUMP)
-  target_include_directories(bpftrace_test PUBLIC ${LIBBPF_INCLUDE_DIRS})
-  target_link_libraries(bpftrace_test ${LIBBPF_LIBRARIES})
-  if (HAVE_LIBBPF_BTF_DUMP_EMIT_TYPE_DECL)
-    target_compile_definitions(bpftrace_test PRIVATE HAVE_LIBBPF_BTF_DUMP_EMIT_TYPE_DECL)
-  endif()
-endif(LIBBPF_BTF_DUMP_FOUND)
-if (HAVE_BCC_KFUNC)
-  target_compile_definitions(bpftrace_test PRIVATE HAVE_BCC_KFUNC)
-endif(HAVE_BCC_KFUNC)
-if(HAVE_BCC_USDT_ADDSEM)
-  target_compile_definitions(bpftrace PRIVATE HAVE_BCC_USDT_ADDSEM)
-endif(HAVE_BCC_USDT_ADDSEM)
 target_compile_definitions(bpftrace_test PRIVATE TEST_CODEGEN_LOCATION="${CMAKE_SOURCE_DIR}/tests/codegen/llvm/")
-if(HAVE_BFD_DISASM)
-  target_compile_definitions(bpftrace_test PRIVATE HAVE_BFD_DISASM)
-  if(LIBBFD_DISASM_FOUR_ARGS_SIGNATURE)
-    target_compile_definitions(bpftrace_test PRIVATE LIBBFD_DISASM_FOUR_ARGS_SIGNATURE)
-  endif(LIBBFD_DISASM_FOUR_ARGS_SIGNATURE)
-  if(STATIC_LINKING)
-    add_library(LIBBFD STATIC IMPORTED)
-    set_property(TARGET LIBBFD PROPERTY IMPORTED_LOCATION ${LIBBFD_LIBRARIES})
-    target_link_libraries(bpftrace_test LIBBFD)
-    add_library(LIBOPCODES STATIC IMPORTED)
-    set_property(TARGET LIBOPCODES PROPERTY IMPORTED_LOCATION ${LIBOPCODES_LIBRARIES})
-    target_link_libraries(bpftrace_test LIBOPCODES)
-    add_library(LIBIBERTY STATIC IMPORTED)
-    set_property(TARGET LIBIBERTY PROPERTY IMPORTED_LOCATION ${LIBIBERTY_LIBRARIES})
-    target_link_libraries(bpftrace_test LIBIBERTY)
-  else()
-    target_link_libraries(bpftrace_test ${LIBBFD_LIBRARIES})
-    target_link_libraries(bpftrace_test ${LIBOPCODES_LIBRARIES})
-  endif(STATIC_LINKING)
-endif(HAVE_BFD_DISASM)
-if(LIBBCC_ATTACH_KPROBE_SIX_ARGS_SIGNATURE)
-  target_compile_definitions(bpftrace_test PRIVATE LIBBCC_ATTACH_KPROBE_SIX_ARGS_SIGNATURE)
-endif(LIBBCC_ATTACH_KPROBE_SIX_ARGS_SIGNATURE)
-if(LIBBCC_ATTACH_UPROBE_SEVEN_ARGS_SIGNATURE)
-  target_compile_definitions(bpftrace_test PRIVATE LIBBCC_ATTACH_UPROBE_SEVEN_ARGS_SIGNATURE)
-endif(LIBBCC_ATTACH_UPROBE_SEVEN_ARGS_SIGNATURE)
+target_link_libraries(bpftrace_test libbpftrace)
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
   target_compile_definitions(bpftrace_test PRIVATE ARCH_AARCH64)
@@ -139,76 +58,62 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
   target_compile_definitions(bpftrace_test PRIVATE ARCH_X86_64)
 endif()
 
-target_link_libraries(bpftrace_test arch ast parser resources)
+target_compile_definitions(bpftrace_test PRIVATE ${BPFTRACE_FLAGS})
 
-target_link_libraries(bpftrace_test ${LIBBCC_LIBRARIES})
-if (STATIC_LINKING)
-  if(EMBED_LLVM OR EMBED_CLANG)
-    set_target_properties(bpftrace_test PROPERTIES LINK_FLAGS "${EMBEDDED_LINK_FLAGS}")
+if(BUILD_ASAN)
+  target_compile_options(bpftrace_test PUBLIC "-fsanitize=address")
+  target_link_options(bpftrace_test PUBLIC "-fsanitize=address")
+endif()
+
+if(STATIC_LINKING)
+  if(EMBED_USE_LLVM)
+    target_link_options(bpftrace_test BEFORE PRIVATE "-static-libgcc" "-static-libstdc++")
   endif()
   if(STATIC_LIBC)
     set_target_properties(bpftrace_test PROPERTIES LINK_FLAGS "-static")
   endif()
-
-  # These are not part of the static libbcc so have to be added separate
-  target_link_libraries(bpftrace_test ${LIBBCC_BPF_LIBRARY_STATIC})
-  target_link_libraries(bpftrace_test ${LIBBPF_LIBRARIES})
-  target_link_libraries(bpftrace_test ${LIBBCC_LOADER_LIBRARY_STATIC})
-
-  add_library(LIBELF STATIC IMPORTED)
-  set_property(TARGET LIBELF PROPERTY IMPORTED_LOCATION ${LIBELF_LIBRARIES})
-  target_link_libraries(bpftrace_test LIBELF)
-else()
-  target_link_libraries(bpftrace_test ${LIBELF_LIBRARIES})
 endif(STATIC_LINKING)
 
-# Support for std::filesystem
-# GCC version <9 and Clang (all versions) require -lstdc++fs
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "9")
-  target_link_libraries(bpftrace_test "stdc++fs")
-endif()
-
-find_package(Threads REQUIRED)
-
-# Ninja build system needs the byproducts set explicilty so it can
-# check for missing dependencies.
-# https://cmake.org/pipermail/cmake/2015-April/060234.html
-set(gtest_byproducts
-  <BINARY_DIR>/googlemock/gtest/libgtest.a
-  <BINARY_DIR>/googlemock/gtest/libgtest_main.a
-  <BINARY_DIR>/googlemock/libgmock.a
-)
-include(ExternalProject)
-if (OFFLINE_BUILDS)
+# Still need to support vendored gtest/gmock b/c old ubuntu versions (< focal)
+# only provide gtest/gmock sources -- no precompiled binaries
+if(VENDOR_GTEST)
+  # Ninja build system needs the byproducts set explicilty so it can
+  # check for missing dependencies.
+  # https://cmake.org/pipermail/cmake/2015-April/060234.html
+  set(gtest_byproducts
+    <BINARY_DIR>/googlemock/gtest/libgtest.a
+    <BINARY_DIR>/googlemock/gtest/libgtest_main.a
+    <BINARY_DIR>/googlemock/libgmock.a
+  )
+  include(ExternalProject)
   ExternalProject_Add(gtest-git
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG release-1.8.1
+    GIT_TAG release-1.10.0
     STEP_TARGETS build update
     EXCLUDE_FROM_ALL 1
-    UPDATE_DISCONNECTED 1
     BUILD_BYPRODUCTS ${gtest_byproducts}
-    )
+  )
+  add_dependencies(bpftrace_test gtest-git-build)
+  ExternalProject_Get_Property(gtest-git source_dir binary_dir)
+  target_include_directories(bpftrace_test PUBLIC ${source_dir}/googletest/include)
+  target_include_directories(bpftrace_test PUBLIC ${source_dir}/googlemock/include)
+  target_link_libraries(bpftrace_test ${binary_dir}/lib/libgtest.a)
+  target_link_libraries(bpftrace_test ${binary_dir}/lib/libgtest_main.a)
+  target_link_libraries(bpftrace_test ${binary_dir}/lib/libgmock.a)
 else()
-  ExternalProject_Add(gtest-git
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG release-1.8.1
-    STEP_TARGETS build update
-    EXCLUDE_FROM_ALL 1
-    BUILD_BYPRODUCTS ${gtest_byproducts}
-    )
-endif()
-add_dependencies(bpftrace_test gtest-git-build)
-ExternalProject_Get_Property(gtest-git source_dir binary_dir)
-target_include_directories(bpftrace_test PUBLIC ${source_dir}/googletest/include)
-target_include_directories(bpftrace_test PUBLIC ${source_dir}/googlemock/include)
-target_link_libraries(bpftrace_test ${binary_dir}/googlemock/gtest/libgtest.a)
-target_link_libraries(bpftrace_test ${binary_dir}/googlemock/gtest/libgtest_main.a)
-target_link_libraries(bpftrace_test ${binary_dir}/googlemock/libgmock.a)
+  # bpftrace tests require (at minimum) the vendored version (see above).
+  # There's no great way to enforce a minimum version from cmake -- the cmake
+  # modules don't respect minimum requested version.
+  find_package(GTest REQUIRED)
+  find_package(GMock REQUIRED)
+  include_directories(SYSTEM ${GTEST_INCLUDE_DIRS} ${GMOCK_INCLUDE_DIRS})
+  target_link_libraries(bpftrace_test ${GTEST_BOTH_LIBRARIES} ${GMOCK_LIBRARIES})
+endif(VENDOR_GTEST)
+add_test(NAME bpftrace_test COMMAND bpftrace_test)
 if(NOT STATIC_LINKING)
+  find_package(Threads REQUIRED)
   target_link_libraries(bpftrace_test ${CMAKE_THREAD_LIBS_INIT})
 endif(NOT STATIC_LINKING)
-
-add_test(NAME bpftrace_test COMMAND bpftrace_test)
 
 # Compile all testprograms, one per .c file for runtime testing
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/testprogs/)
@@ -284,13 +189,13 @@ add_custom_target(tools-parsing-test COMMAND ./tools-parsing-test.sh)
 add_test(NAME tools-parsing-test COMMAND ./tools-parsing-test.sh)
 
 if(ENABLE_TEST_VALIDATE_CODEGEN)
-  if((${LLVM_VERSION} VERSION_GREATER 6.99.0) AND (${LLVM_VERSION} VERSION_LESS 8.0.0))
+  if(${LLVM_VERSION_MAJOR} VERSION_EQUAL 12)
     message(STATUS "Adding codegen-validator test")
     configure_file(codegen-validator.sh codegen-validator.sh COPYONLY)
     add_custom_target(codegen-validator COMMAND ./codegen-validator.sh)
     add_test(NAME codegen-validator COMMAND ./codegen-validator.sh ${CMAKE_SOURCE_DIR})
   else()
-    message(STATUS "Not building with LLVM 7, skipping codegen-validator test")
+    message(STATUS "Not building with LLVM 12, skipping codegen-validator test")
   endif()
 else()
   message(STATUS "codegen-validator test disabled")

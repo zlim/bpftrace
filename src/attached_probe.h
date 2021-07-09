@@ -31,6 +31,7 @@ public:
   AttachedProbe &operator=(const AttachedProbe &) = delete;
 
   const Probe &probe() const;
+  int linkfd_ = -1;
 
 private:
   std::string eventprefix() const;
@@ -64,15 +65,15 @@ private:
   void attach_watchpoint(int pid, const std::string &mode);
   void attach_kfunc(void);
   int detach_kfunc(void);
+  void attach_iter(void);
+  int detach_iter(void);
 
   Probe &probe_;
   std::tuple<uint8_t *, uintptr_t> func_;
   std::vector<int> perf_event_fds_;
   int progfd_ = -1;
   uint64_t offset_ = 0;
-#ifdef HAVE_BCC_KFUNC
   int tracing_fd_ = -1;
-#endif
   std::function<void()> usdt_destructor_;
 };
 

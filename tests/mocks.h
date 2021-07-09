@@ -67,6 +67,12 @@ public:
     return 0;
   }
 
+  bool is_traceable_func(
+      const std::string &__attribute__((unused))) const override
+  {
+    return true;
+  }
+
   void set_mock_probe_matcher(std::unique_ptr<MockProbeMatcher> probe_matcher)
   {
     probe_matcher_ = std::move(probe_matcher);
@@ -88,10 +94,13 @@ public:
     has_get_current_cgroup_id_ = std::make_optional<bool>(has_features);
     has_override_return_ = std::make_optional<bool>(has_features);
     prog_kfunc_ = std::make_optional<bool>(has_features);
+    prog_iter_task_ = std::make_optional<bool>(has_features);
+    prog_iter_task_file_ = std::make_optional<bool>(has_features);
     has_loop_ = std::make_optional<bool>(has_features);
     has_probe_read_kernel_ = std::make_optional<bool>(has_features);
     has_features_ = has_features;
     has_d_path_ = std::make_optional<bool>(has_features);
+    has_ktime_get_boot_ns_ = std::make_optional<bool>(has_features);
   };
   bool has_features_;
 };

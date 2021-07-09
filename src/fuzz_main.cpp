@@ -17,16 +17,15 @@
 #include <unistd.h>
 
 #include "ast/callback_visitor.h"
-#include "bpffeature.h"
+#include "ast/clang_parser.h"
+#include "ast/field_analyser.h"
+#include "ast/semantic_analyser.h"
 #include "bpforc.h"
 #include "bpftrace.h"
-#include "clang_parser.h"
 #include "codegen_llvm.h"
 #include "driver.h"
-#include "field_analyser.h"
 #include "log.h"
 #include "output.h"
-#include "semantic_analyser.h"
 #include "tracepoint_format_parser.h"
 
 #define DEFAULT_NODE_MAX 200
@@ -136,7 +135,7 @@ int fuzz_main(const char* data, size_t sz)
     struct utsname utsname;
     uname(&utsname);
     std::string ksrc, kobj;
-    auto kdirs = get_kernel_dirs(utsname);
+    auto kdirs = get_kernel_dirs(utsname, !bpftrace.features_->has_btf());
     ksrc = std::get<0>(kdirs);
     kobj = std::get<1>(kdirs);
 

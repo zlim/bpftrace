@@ -1,6 +1,5 @@
 #pragma once
 
-#include <csignal>
 #include <cstring>
 #include <exception>
 #include <iostream>
@@ -142,7 +141,8 @@ std::vector<int> get_online_cpus();
 std::vector<int> get_possible_cpus();
 bool is_dir(const std::string &path);
 std::tuple<std::string, std::string> get_kernel_dirs(
-    const struct utsname &utsname);
+    const struct utsname &utsname,
+    bool unpack_kheaders);
 std::vector<std::string> get_kernel_cflags(const char *uname_machine,
                                            const std::string &ksrc,
                                            const std::string &kobj);
@@ -162,6 +162,8 @@ bool symbol_has_cpp_mangled_signature(const std::string &sym_name);
 pid_t parse_pid(const std::string &str);
 std::string hex_format_buffer(const char *buf, size_t size);
 std::optional<std::string> abs_path(const std::string &rel_path);
+bool symbol_has_module(const std::string &symbol);
+std::string strip_symbol_module(const std::string &symbol);
 
 // Generate object file section name for a given probe
 inline std::string get_section_name_for_probe(
@@ -213,8 +215,6 @@ inline std::string &trim(std::string &s)
   return ltrim(rtrim(s));
 }
 
-int signal_name_to_num(std::string &signal);
-
 template <typename T>
 T read_data(const void *src)
 {
@@ -225,4 +225,27 @@ T read_data(const void *src)
 
 uint64_t parse_exponent(const char *str);
 uint32_t kernel_version(int attempt);
+
+template <typename T>
+T reduce_value(const std::vector<uint8_t> &value, int nvalues)
+{
+  T sum = 0;
+  for (int i = 0; i < nvalues; i++)
+  {
+    sum += read_data<T>(value.data() + i * sizeof(T));
+  }
+  return sum;
+}
+int64_t min_value(const std::vector<uint8_t> &value, int nvalues);
+uint64_t max_value(const std::vector<uint8_t> &value, int nvalues);
+
+// Combination of 2 hashes
+// The algorithm is taken from boost::hash_combine
+template <class T>
+inline void hash_combine(std::size_t &seed, const T &value)
+{
+  std::hash<T> hasher;
+  seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
 } // namespace bpftrace

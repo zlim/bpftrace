@@ -36,6 +36,27 @@ void FieldAnalyser::visit(Builtin &builtin)
       default:
         break;
     }
+    // For each iterator probe, the context is pointing to specific struct,
+    // make them resolved and available
+    if (probe_type_ == ProbeType::iter)
+    {
+      std::string it_struct;
+
+      if (attach_func_ == "task")
+      {
+        it_struct = "struct bpf_iter__task";
+      }
+      else if (attach_func_ == "task_file")
+      {
+        it_struct = "struct bpf_iter__task_file";
+      }
+
+      if (!it_struct.empty())
+      {
+        bpftrace_.btf_set_.insert(it_struct);
+        type_ = it_struct;
+      }
+    }
   }
   else if (builtin.ident == "curtask")
   {
@@ -69,7 +90,7 @@ void FieldAnalyser::visit(Map &map)
   MapKey key;
   if (map.vargs) {
     for (Expression *expr : *map.vargs) {
-      expr->accept(*this);
+      Visit(*expr);
     }
   }
 
@@ -89,7 +110,7 @@ void FieldAnalyser::visit(FieldAccess &acc)
 {
   has_builtin_args_ = false;
 
-  acc.expr->accept(*this);
+  Visit(*acc.expr);
 
   if (has_builtin_args_)
   {
@@ -119,7 +140,7 @@ void FieldAnalyser::visit(FieldAccess &acc)
 
 void FieldAnalyser::visit(Cast &cast)
 {
-  cast.expr->accept(*this);
+  Visit(*cast.expr);
   type_ = cast.cast_type;
   assert(!type_.empty());
   bpftrace_.btf_set_.insert(type_);
@@ -127,14 +148,14 @@ void FieldAnalyser::visit(Cast &cast)
 
 void FieldAnalyser::visit(AssignMapStatement &assignment)
 {
-  assignment.map->accept(*this);
-  assignment.expr->accept(*this);
+  Visit(*assignment.map);
+  Visit(*assignment.expr);
   var_types_.emplace(assignment.map->ident, type_);
 }
 
 void FieldAnalyser::visit(AssignVarStatement &assignment)
 {
-  assignment.expr->accept(*this);
+  Visit(*assignment.expr);
   var_types_.emplace(assignment.var->ident, type_);
 }
 
@@ -273,15 +294,16 @@ void FieldAnalyser::visit(Probe &probe)
   probe_ = &probe;
 
   for (AttachPoint *ap : *probe.attach_points) {
-    ap->accept(*this);
-    ProbeType pt = probetype(ap->provider);
-    prog_type_ = progtype(pt);
+    Visit(*ap);
+    probe_type_ = probetype(ap->provider);
+    prog_type_ = progtype(probe_type_);
+    attach_func_ = ap->func;
   }
   if (probe.pred) {
-    probe.pred->accept(*this);
+    Visit(*probe.pred);
   }
   for (Statement *stmt : *probe.stmts) {
-    stmt->accept(*this);
+    Visit(*stmt);
   }
 }
 
@@ -290,7 +312,7 @@ int FieldAnalyser::analyse()
   if (!bpftrace_.btf_.has_data())
     return 0;
 
-  Visit(root_);
+  Visit(*root_);
 
   std::string errors = err_.str();
   if (!errors.empty())

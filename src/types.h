@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <map>
 #include <memory>
 #include <ostream>
 #include <sstream>
@@ -8,6 +9,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
+
+#include <cereal/access.hpp>
 
 namespace bpftrace {
 
@@ -36,7 +39,6 @@ enum class Type
   string,
   ksym,
   usym,
-  join,
   probe,
   username,
   inet,
@@ -73,9 +75,18 @@ struct StackType
   bool operator ==(const StackType &obj) const {
     return limit == obj.limit && mode == obj.mode;
   }
+
+private:
+  friend class cereal::access;
+  template <typename Archive>
+  void serialize(Archive &archive)
+  {
+    archive(limit, mode);
+  }
 };
 
-struct Tuple;
+class BPFtrace;
+struct Struct;
 struct Field;
 
 class SizedType
@@ -100,25 +111,51 @@ public:
   int kfarg_idx = -1;
 
 private:
-  size_t size_; // in bytes
+  size_t size_ = -1; // in bytes
   bool is_signed_ = false;
   std::shared_ptr<SizedType> element_type_; // for "container" and pointer
                                             // (like) types
-  size_t num_elements_;               // for array like types
+  size_t num_elements_ = -1;                // for array like types
   std::string name_; // name of this type, for named types like struct
   bool ctx_ = false; // Is bpf program context
   AddrSpace as_ = AddrSpace::none;
-  ssize_t size_bits_; // size in bits for integer types
+  ssize_t size_bits_ = -1; // size in bits for integer types
 
-  std::shared_ptr<Tuple> tuple_fields; // tuple fields
+  std::weak_ptr<Struct> inner_struct_; // inner struct for records and tuples
+                                       // the actual Struct object is owned by
+                                       // StructManager
+
+  friend class cereal::access;
+  template <typename Archive>
+  void serialize(Archive &archive)
+  {
+    archive(type,
+            stack_type,
+            is_internal,
+            is_tparg,
+            is_kfarg,
+            kfarg_idx,
+            size_,
+            is_signed_,
+            element_type_,
+            num_elements_,
+            name_,
+            ctx_,
+            as_,
+            size_bits_,
+            inner_struct_);
+  }
 
 public:
   /**
-     Tuple accessors
+     Tuple/struct accessors
   */
   std::vector<Field> &GetFields() const;
+  bool HasField(const std::string &name) const;
+  const Field &GetField(const std::string &name) const;
   Field &GetField(ssize_t n) const;
   ssize_t GetFieldCount() const;
+  std::weak_ptr<const Struct> GetStruct() const;
 
   /**
      Required alignment for this type
@@ -161,9 +198,8 @@ public:
 
   bool IsPrintableTy()
   {
-    return type != Type::none && type != Type::record &&
-           type != Type::pointer && type != Type::stack_mode &&
-           type != Type::array && type != Type::record && !IsCtxAccess();
+    return type != Type::none && type != Type::pointer &&
+           type != Type::stack_mode && !IsCtxAccess();
   }
 
   bool IsSigned(void) const;
@@ -286,11 +322,6 @@ public:
   {
     return type == Type::usym;
   };
-
-  bool IsJoinTy(void) const
-  {
-    return type == Type::join;
-  };
   bool IsProbeTy(void) const
   {
     return type == Type::probe;
@@ -341,9 +372,10 @@ public:
                                const SizedType &element_type);
 
   friend SizedType CreatePointer(const SizedType &pointee_type, AddrSpace as);
-  friend SizedType CreateRecord(size_t size, const std::string &name);
+  friend SizedType CreateRecord(const std::string &name,
+                                std::weak_ptr<Struct> record);
   friend SizedType CreateInteger(size_t bits, bool is_signed);
-  friend SizedType CreateTuple(const std::vector<SizedType> &fields);
+  friend SizedType CreateTuple(std::weak_ptr<Struct> tuple);
 };
 // Type helpers
 
@@ -365,12 +397,9 @@ SizedType CreateString(size_t size);
 SizedType CreateArray(size_t num_elements, const SizedType &element_type);
 SizedType CreatePointer(const SizedType &pointee_type,
                         AddrSpace as = AddrSpace::none);
-/**
-   size in bytes
- */
-SizedType CreateRecord(size_t size, const std::string &name);
 
-SizedType CreateTuple(const std::vector<SizedType> &fields);
+SizedType CreateRecord(const std::string &name, std::weak_ptr<Struct> record);
+SizedType CreateTuple(std::weak_ptr<Struct> tuple);
 
 SizedType CreateStackMode();
 SizedType CreateStack(bool kernel, StackType st = StackType());
@@ -388,7 +417,6 @@ SizedType CreateLhist();
 SizedType CreateHist();
 SizedType CreateUSym();
 SizedType CreateKSym();
-SizedType CreateJoin(size_t argnum, size_t argsize);
 SizedType CreateBuffer(size_t size);
 SizedType CreateTimestamp();
 SizedType CreateMacAddress();
@@ -412,6 +440,7 @@ enum class ProbeType
   asyncwatchpoint,
   kfunc,
   kretfunc,
+  iter,
 };
 
 std::ostream &operator<<(std::ostream &os, ProbeType type);
@@ -440,6 +469,7 @@ const std::vector<ProbeItem> PROBE_LIST = {
   { "asyncwatchpoint", "aw", ProbeType::asyncwatchpoint },
   { "kfunc", "f", ProbeType::kfunc },
   { "kretfunc", "fr", ProbeType::kretfunc },
+  { "iter", "it", ProbeType::iter },
 };
 
 ProbeType probetype(const std::string &type);
@@ -457,6 +487,7 @@ struct Probe
   std::string orig_name;        // original full probe name,
                                 // before wildcard expansion
   std::string name;             // full probe name
+  std::string pin;              // pin file for iterator probes
   std::string ns;               // for USDT probes, if provider namespace not from path
   uint64_t loc = 0;             // for USDT probes
   int usdt_location_idx = 0;    // to disambiguate duplicate USDT markers
@@ -503,6 +534,8 @@ enum class PositionalParameterType
 
 } // namespace bpftrace
 
+// SizedType hash function
+// Allows to use SizedType in unordered_set/map.
 namespace std {
 template <>
 struct hash<bpftrace::StackType>
@@ -519,6 +552,12 @@ struct hash<bpftrace::StackType>
 
     return {}; // unreached
   }
+};
+
+template <>
+struct hash<bpftrace::SizedType>
+{
+  size_t operator()(const bpftrace::SizedType &type) const;
 };
 
 } // namespace std

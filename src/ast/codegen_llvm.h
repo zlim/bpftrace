@@ -3,9 +3,11 @@
 #include <iostream>
 #include <optional>
 #include <ostream>
+#include <tuple>
 
 #include "bpftrace.h"
 #include "irbuilderbpf.h"
+#include "location.hh"
 #include "map.h"
 #include "visitors.h"
 
@@ -21,7 +23,7 @@ using namespace llvm;
 
 using CallArgs = std::vector<std::tuple<std::string, std::vector<Field>>>;
 
-class CodegenLLVM : public ASTVisitor
+class CodegenLLVM : public Visitor
 {
 public:
   explicit CodegenLLVM(Node *root, BPFtrace &bpftrace);
@@ -53,7 +55,6 @@ public:
   void visit(AttachPoint &ap) override;
   void visit(Probe &probe) override;
   void visit(Program &program) override;
-  AllocaInst *getMapKey(Map &map);
   AllocaInst *getHistMapKey(Map &map, Value *log2);
   int         getNextIndexForProbe(const std::string &probe_name);
   Value      *createLogicalAnd(Binop &binop);
@@ -84,6 +85,11 @@ private:
       deleter_ = std::move(deleter);
     }
 
+    ScopedExprDeleter(const ScopedExprDeleter &other) = delete;
+    ScopedExprDeleter &operator=(const ScopedExprDeleter &other) = delete;
+    ScopedExprDeleter(ScopedExprDeleter &&other) = default;
+    ScopedExprDeleter &operator=(ScopedExprDeleter &&other) = default;
+
     ~ScopedExprDeleter()
     {
       if (deleter_)
@@ -109,6 +115,7 @@ private:
                      std::optional<int> usdt_location_index = std::nullopt);
 
   [[nodiscard]] ScopedExprDeleter accept(Node *node);
+  [[nodiscard]] std::tuple<Value *, ScopedExprDeleter> getMapKey(Map &map);
 
   void compareStructure(SizedType &our_type, llvm::Type *llvm_type);
 
@@ -118,6 +125,14 @@ private:
   void binop_string(Binop &binop);
   void binop_buf(Binop &binop);
   void binop_int(Binop &binop);
+  void kstack_ustack(const std::string &ident,
+                     StackType stack_type,
+                     const location &loc);
+
+  // Create return instruction
+  //
+  // If null, return value will depend on current attach point
+  void createRet(Value *value = nullptr);
 
   // Every time we see a watchpoint that specifies a function + arg pair, we
   // generate a special "setup" probe that:
@@ -134,18 +149,35 @@ private:
                                     int arg_num,
                                     int index);
 
+  void readDatastructElemFromStack(Value *src_data,
+                                   Value *index,
+                                   const SizedType &data_type,
+                                   const SizedType &elem_type,
+                                   ScopedExprDeleter &scoped_del);
+  void probereadDatastructElem(Value *src_data,
+                               Value *offset,
+                               const SizedType &data_type,
+                               const SizedType &elem_type,
+                               ScopedExprDeleter &scoped_del,
+                               location loc,
+                               const std::string &temp_name);
+
   Node *root_ = nullptr;
-  LLVMContext context_;
+
+  BPFtrace &bpftrace_;
+  std::unique_ptr<BpfOrc> orc_;
   std::unique_ptr<Module> module_;
-  std::unique_ptr<ExecutionEngine> ee_;
-  TargetMachine *TM_;
   IRBuilderBPF b_;
-  DataLayout layout_;
+
+  const DataLayout &datalayout() const
+  {
+    return orc_->getDataLayout();
+  }
+
   Value *expr_ = nullptr;
   std::function<void()> expr_deleter_; // intentionally empty
   Value *ctx_;
   AttachPoint *current_attach_point_ = nullptr;
-  BPFtrace &bpftrace_;
   std::string probefull_;
   std::string tracepoint_struct_;
   std::map<std::string, int> next_probe_index_;
@@ -154,6 +186,7 @@ private:
 
   std::map<std::string, AllocaInst *> variables_;
   int printf_id_ = 0;
+  int seq_printf_id_ = 0;
   int time_id_ = 0;
   int cat_id_ = 0;
   int strftime_id_ = 0;
@@ -164,14 +197,14 @@ private:
 
   Function *linear_func_ = nullptr;
   Function *log2_func_ = nullptr;
-  std::unique_ptr<BpfOrc> orc_;
 
   size_t getStructSize(StructType *s)
   {
-    return layout_.getTypeAllocSize(s);
+    return datalayout().getTypeAllocSize(s);
   }
 
   std::vector<std::tuple<BasicBlock *, BasicBlock *>> loops_;
+  std::unordered_map<std::string, bool> probe_names_;
 
   enum class State
   {

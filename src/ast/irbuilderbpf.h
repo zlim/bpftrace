@@ -54,25 +54,27 @@ public:
   llvm::Type *GetType(const SizedType &stype);
   llvm::ConstantInt *GetIntSameSize(uint64_t C, llvm::Value *expr);
   llvm::ConstantInt *GetIntSameSize(uint64_t C, llvm::Type *ty);
-  CallInst   *CreateBpfPseudoCall(int mapfd);
-  CallInst   *CreateBpfPseudoCall(Map &map);
+  CallInst *CreateBpfPseudoCallId(int mapid);
+  CallInst *CreateBpfPseudoCallId(Map &map);
+  CallInst *CreateBpfPseudoCallValue(int mapid);
+  CallInst *CreateBpfPseudoCallValue(Map &map);
   Value *CreateMapLookupElem(Value *ctx,
                              Map &map,
-                             AllocaInst *key,
+                             Value *key,
                              const location &loc);
   Value *CreateMapLookupElem(Value *ctx,
-                             int mapfd,
-                             AllocaInst *key,
+                             int mapid,
+                             Value *key,
                              SizedType &type,
                              const location &loc);
   void CreateMapUpdateElem(Value *ctx,
                            Map &map,
-                           AllocaInst *key,
+                           Value *key,
                            Value *val,
                            const location &loc);
   void CreateMapDeleteElem(Value *ctx,
                            Map &map,
-                           AllocaInst *key,
+                           Value *key,
                            const location &loc);
   void CreateProbeRead(Value *ctx,
                        Value *dst,
@@ -163,6 +165,20 @@ public:
                   AllocaInst *buf,
                   Value *path,
                   const location &loc);
+  void CreateSeqPrintf(Value *ctx,
+                       Value *fmt,
+                       Value *fmt_size,
+                       AllocaInst *data,
+                       Value *data_len,
+                       const location &loc);
+  // moves the insertion point to the start of the function you're inside,
+  // invokes functor, then moves the insertion point back to its original
+  // position. this enables you to emit instructions at the start of your
+  // function. you might want to "hoist" an alloca to make it available to
+  // blocks that do not follow from yours, for example to make $a accessible in
+  // both branches here:
+  // BEGIN { if (nsecs > 0) { $a = 1 } else { $a = 2 } print($a); exit() }
+  void hoist(const std::function<void()> &functor);
   int helper_error_id_ = 0;
 
 private:
@@ -174,7 +190,7 @@ private:
                                 Builtin &builtin,
                                 AddrSpace as,
                                 const location &loc);
-  CallInst   *createMapLookup(int mapfd, AllocaInst *key);
+  CallInst *createMapLookup(int mapid, Value *key);
   Constant *createProbeReadStrFn(llvm::Type *dst,
                                  llvm::Type *src,
                                  AddrSpace as);

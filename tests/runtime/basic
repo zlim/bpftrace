@@ -49,6 +49,12 @@ EXPECT kfunc
 REQUIRES_FEATURE btf
 TIMEOUT 1
 
+NAME it lists kfunc params
+RUN bpftrace -lv "kfunc:*" | grep kfunc
+EXPECT \s+[a-zA-Z_\*\s]+
+REQUIRES_FEATURE btf
+TIMEOUT 1
+
 NAME it lists kprobes with regex filter
 RUN bpftrace -l "kprobe:*"
 EXPECT kprobe:
@@ -191,4 +197,9 @@ REQUIRES_FEATURE loop
 NAME disable warnings
 RUN bpftrace --no-warnings -e 'BEGIN { @x = stats(10); print(@x, 2); clear(@x); exit();}' 2>&1| grep -c -E "WARNING|invalid option"
 EXPECT ^0$
+TIMEOUT 1
+
+NAME kaddr fails
+RUN bpftrace -e 'BEGIN { print(kaddr("asdfzzzzzzz")) }'
+EXPECT Failed to resolve kernel symbol
 TIMEOUT 1

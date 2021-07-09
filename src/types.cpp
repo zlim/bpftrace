@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 
+#include "bpftrace.h"
 #include "log.h"
 #include "struct.h"
 #include "types.h"
@@ -95,6 +96,13 @@ bool SizedType::IsEqual(const SizedType &t) const
   if (IsPtrTy())
     return *t.GetPointeeTy() == *GetPointeeTy();
 
+  if (IsArrayTy())
+    return t.GetNumElements() == GetNumElements() &&
+           *t.GetElementTy() == *GetElementTy();
+
+  if (IsTupleTy())
+    return *t.GetStruct().lock() == *GetStruct().lock();
+
   return type == t.type && GetSize() == t.GetSize() &&
          is_signed_ == t.is_signed_;
 }
@@ -166,7 +174,6 @@ std::string typestr(Type t)
     case Type::string:   return "string";   break;
     case Type::ksym:     return "ksym";     break;
     case Type::usym:     return "usym";     break;
-    case Type::join:     return "join";     break;
     case Type::probe:    return "probe";    break;
     case Type::username: return "username"; break;
     case Type::inet:     return "inet";     break;
@@ -235,6 +242,9 @@ std::string probetypeName(ProbeType t)
       break;
     case ProbeType::kfunc:       return "kfunc";       break;
     case ProbeType::kretfunc:    return "kretfunc";    break;
+    case ProbeType::iter:
+      return "iter";
+      break;
   }
 
   return {}; // unreached
@@ -353,10 +363,11 @@ SizedType CreatePointer(const SizedType &pointee_type, AddrSpace as)
   return ty;
 }
 
-SizedType CreateRecord(size_t size, const std::string &name)
+SizedType CreateRecord(const std::string &name, std::weak_ptr<Struct> record)
 {
-  auto ty = SizedType(Type::record, size);
+  auto ty = SizedType(Type::record, record.expired() ? 0 : record.lock()->size);
   ty.name_ = name;
+  ty.inner_struct_ = record;
   return ty;
 }
 
@@ -434,11 +445,6 @@ SizedType CreateKSym()
   return SizedType(Type::ksym, 8);
 }
 
-SizedType CreateJoin(size_t argnum, size_t argsize)
-{
-  return SizedType(Type::join, 8 + 8 + argnum * argsize);
-}
-
 SizedType CreateBuffer(size_t size)
 {
   return SizedType(Type::buffer, size);
@@ -449,11 +455,10 @@ SizedType CreateTimestamp()
   return SizedType(Type::timestamp, 16);
 }
 
-SizedType CreateTuple(const std::vector<SizedType> &fields)
+SizedType CreateTuple(std::weak_ptr<Struct> tuple)
 {
-  auto s = SizedType(Type::tuple, 0);
-  s.tuple_fields = Tuple::Create(fields);
-  s.size_ = s.tuple_fields->size;
+  auto s = SizedType(Type::tuple, tuple.lock()->size);
+  s.inner_struct_ = tuple;
   return s;
 }
 
@@ -471,28 +476,32 @@ bool SizedType::IsSigned(void) const
 
 std::vector<Field> &SizedType::GetFields() const
 {
-  assert(IsTupleTy());
-  return tuple_fields->fields;
+  assert(IsTupleTy() || IsRecordTy());
+  return inner_struct_.lock()->fields;
 }
 
 Field &SizedType::GetField(ssize_t n) const
 {
-  assert(IsTupleTy());
+  assert(IsTupleTy() || IsRecordTy());
   if (n >= GetFieldCount())
     throw std::runtime_error("Getfield(): out of bound");
-  return tuple_fields->fields[n];
+  return inner_struct_.lock()->fields[n];
 }
 
 ssize_t SizedType::GetFieldCount() const
 {
-  assert(IsTupleTy());
-  return tuple_fields->fields.size();
+  assert(IsTupleTy() || IsRecordTy());
+  return inner_struct_.lock()->fields.size();
 }
 
 void SizedType::DumpStructure(std::ostream &os)
 {
   assert(IsTupleTy());
-  return tuple_fields->Dump(os);
+  if (IsTupleTy())
+    os << "tuple";
+  else
+    os << "struct";
+  return inner_struct_.lock()->Dump(os);
 }
 
 ssize_t SizedType::GetAlignment() const
@@ -500,15 +509,92 @@ ssize_t SizedType::GetAlignment() const
   if (IsStringTy())
     return 1;
 
-  if (IsTupleTy())
-    return tuple_fields->align;
+  if (IsTupleTy() || IsRecordTy())
+    return inner_struct_.lock()->align;
 
   if (GetSize() <= 2)
     return GetSize();
-  else if (GetSize() <= 4)
+  else if (IsArrayTy())
+    return element_type_->GetAlignment();
+  else if (IsByteArray() || GetSize() <= 4)
     return 4;
   else
     return 8;
 }
 
+bool SizedType::HasField(const std::string &name) const
+{
+  assert(IsRecordTy());
+  return inner_struct_.lock()->HasField(name);
+}
+
+const Field &SizedType::GetField(const std::string &name) const
+{
+  assert(IsRecordTy());
+  return inner_struct_.lock()->GetField(name);
+}
+
+std::weak_ptr<const Struct> SizedType::GetStruct() const
+{
+  assert(IsRecordTy() || IsTupleTy());
+  return inner_struct_;
+}
+
 } // namespace bpftrace
+
+namespace std {
+size_t hash<bpftrace::SizedType>::operator()(
+    const bpftrace::SizedType &type) const
+{
+  auto hash = std::hash<unsigned>()(static_cast<unsigned>(type.type));
+  bpftrace::hash_combine(hash, type.GetSize());
+
+  switch (type.type)
+  {
+    case bpftrace::Type::integer:
+      bpftrace::hash_combine(hash, type.IsSigned());
+      break;
+    case bpftrace::Type::pointer:
+      bpftrace::hash_combine(hash, *type.GetPointeeTy());
+      break;
+    case bpftrace::Type::record:
+      bpftrace::hash_combine(hash, type.GetName());
+      break;
+    case bpftrace::Type::kstack:
+    case bpftrace::Type::ustack:
+      bpftrace::hash_combine(hash, type.stack_type);
+      break;
+    case bpftrace::Type::array:
+      bpftrace::hash_combine(hash, *type.GetElementTy());
+      bpftrace::hash_combine(hash, type.GetNumElements());
+      break;
+    case bpftrace::Type::tuple:
+      bpftrace::hash_combine(hash, *type.GetStruct().lock());
+      break;
+    // No default case (explicitly skip all remaining types instead) to get
+    // a compiler warning when we add a new type
+    case bpftrace::Type::none:
+    case bpftrace::Type::hist:
+    case bpftrace::Type::lhist:
+    case bpftrace::Type::count:
+    case bpftrace::Type::sum:
+    case bpftrace::Type::min:
+    case bpftrace::Type::max:
+    case bpftrace::Type::avg:
+    case bpftrace::Type::stats:
+    case bpftrace::Type::string:
+    case bpftrace::Type::ksym:
+    case bpftrace::Type::usym:
+    case bpftrace::Type::probe:
+    case bpftrace::Type::username:
+    case bpftrace::Type::inet:
+    case bpftrace::Type::stack_mode:
+    case bpftrace::Type::buffer:
+    case bpftrace::Type::timestamp:
+    case bpftrace::Type::mac_address:
+      break;
+  }
+
+  return hash;
+}
+} // namespace std

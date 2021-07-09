@@ -1,9 +1,9 @@
-#include "semantic_analyser.h"
+#include "ast/semantic_analyser.h"
+#include "ast/field_analyser.h"
 #include "bpffeature.h"
 #include "bpftrace.h"
 #include "clang_parser.h"
 #include "driver.h"
-#include "field_analyser.h"
 #include "mocks.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -58,14 +58,19 @@ void test(BPFtrace &bpftrace,
           int expected_result = 0,
           bool safe_mode = true,
           bool has_child = false,
-          int expected_field_analyser = 0)
+          int expected_field_analyser = 0,
+          int expected_parse = 0)
 {
   std::stringstream out;
   std::stringstream msg;
   msg << "\nInput:\n" << input << "\n\nOutput:\n";
 
   bpftrace.safe_mode_ = safe_mode;
-  ASSERT_EQ(driver.parse_str(input), 0);
+  ASSERT_EQ(driver.parse_str(input), expected_parse);
+
+  // Can't continue if parsing failed
+  if (expected_parse)
+    return;
 
   ast::FieldAnalyser fields(driver.root_, bpftrace, out);
   EXPECT_EQ(fields.analyse(), expected_field_analyser) << msg.str() + out.str();
@@ -114,7 +119,8 @@ void test(const std::string &input,
           int expected_result = 0,
           bool safe_mode = true,
           bool has_child = false,
-          int expected_field_analyser = 0)
+          int expected_field_analyser = 0,
+          int expected_parse = 0)
 {
   auto bpftrace = get_mock_bpftrace();
   Driver driver(*bpftrace);
@@ -125,7 +131,8 @@ void test(const std::string &input,
        expected_result,
        safe_mode,
        has_child,
-       expected_field_analyser);
+       expected_field_analyser,
+       expected_parse);
 }
 
 TEST(semantic_analyser, builtin_variables)
@@ -605,7 +612,7 @@ TEST(semantic_analyser, call_str_state_leak_regression_test)
 TEST(semantic_analyser, call_buf)
 {
   test("kprobe:f { buf(arg0, 1); }", 0);
-  test("kprobe:f { buf(arg0, -1); }", 10);
+  test("kprobe:f { buf(arg0, -1); }", 1);
   test("kprobe:f { @x = buf(arg0, 1); }", 0);
   test("kprobe:f { $x = buf(arg0, 1); }", 0);
   test("kprobe:f { buf(); }", 1);
@@ -877,6 +884,10 @@ TEST(semantic_analyser, array_access) {
   test("struct MyStruct { int y[4]; } kprobe:f { $s = (struct MyStruct *) "
        "arg0; $idx = 0; @x = $s->y[$idx];}",
        10);
+  test("kprobe:f { $s = arg0; @x = $s[0]; }", 10);
+  test("struct MyStruct { void *y; } kprobe:f { $s = (struct MyStruct *) "
+       "arg0; @x = $s->y[5];}",
+       10);
   BPFtrace bpftrace;
   Driver driver(bpftrace);
   test(driver,
@@ -902,6 +913,11 @@ TEST(semantic_analyser, array_access) {
   auto array_map_assignment = static_cast<ast::AssignMapStatement *>(
       driver.root_->probes->at(0)->stmts->at(0));
   EXPECT_EQ(CreateArray(4, CreateInt32()), array_map_assignment->map->type);
+
+  test(driver, "kprobe:f { $s = (int32 *) arg0; $x = $s[0]; }", 0);
+  auto var_assignment = static_cast<ast::AssignVarStatement *>(
+      driver.root_->probes->at(0)->stmts->at(1));
+  EXPECT_EQ(CreateInt32(), var_assignment->var->type);
 }
 
 TEST(semantic_analyser, array_in_map)
@@ -914,6 +930,13 @@ TEST(semantic_analyser, array_in_map)
        0);
   // Mismatched map value types
   test("struct MyStruct { int x[2]; int y[4]; } "
+       "kprobe:f { "
+       "    @a[0] = ((struct MyStruct *)arg0)->x; "
+       "    @a[1] = ((struct MyStruct *)arg0)->y; "
+       "}",
+       1);
+  test("#include <stdint.h>\n"
+       "struct MyStruct { uint8_t x[8]; uint32_t y[2]; }"
        "kprobe:f { "
        "    @a[0] = ((struct MyStruct *)arg0)->x; "
        "    @a[1] = ((struct MyStruct *)arg0)->y; "
@@ -1347,21 +1370,34 @@ TEST(semantic_analyser, map_cast_types)
 
 TEST(semantic_analyser, variable_casts_are_local)
 {
-  std::string structs = "struct type1 { int field; } struct type2 { int field; }";
-  test(structs + "kprobe:f { $x = (struct type1*)cpu } kprobe:g { $x = (struct "
-                 "type2*)cpu; }",
+  std::string structs =
+      "struct type1 { int field; } struct type2 { int field; }";
+  test(structs + "kprobe:f { $x = *(struct type1 *)cpu } "
+                 "kprobe:g { $x = *(struct type2 *)cpu; }",
        0);
 }
 
 TEST(semantic_analyser, map_casts_are_global)
 {
-  std::string structs = "struct type1 { int field; } struct type2 { int field; }";
-  test(structs + "kprobe:f { @x = (struct type1)cpu } kprobe:g { @x = (struct type2)cpu; }", 1);
+  std::string structs =
+      "struct type1 { int field; } struct type2 { int field; }";
+  test(structs + "kprobe:f { @x = *(struct type1 *)cpu }"
+                 "kprobe:g { @x = *(struct type2 *)cpu }",
+       1);
 }
 
 TEST(semantic_analyser, cast_unknown_type)
 {
-  test("kprobe:f { (struct faketype)cpu }", 1);
+  test("kprobe:f { (struct faketype *)cpu }", 1);
+}
+
+TEST(semantic_analyser, cast_struct)
+{
+  // Casting struct by value is forbidden
+  test("struct type { int field; }"
+       "kprobe:f { $s = (struct type *)cpu; $u = (uint32)*$s; }",
+       1);
+  test("struct type { int field; } kprobe:f { $s = (struct type)cpu }", 1);
 }
 
 TEST(semantic_analyser, field_access)
@@ -1375,9 +1411,9 @@ TEST(semantic_analyser, field_access)
 TEST(semantic_analyser, field_access_wrong_field)
 {
   std::string structs = "struct type1 { int field; }";
-  test(structs + "kprobe:f { ((struct type1)cpu).blah }", 1);
-  test(structs + "kprobe:f { $x = (struct type1)cpu; $x.blah }", 1);
-  test(structs + "kprobe:f { @x = (struct type1)cpu; @x.blah }", 1);
+  test(structs + "kprobe:f { ((struct type1 *)cpu)->blah }", 1);
+  test(structs + "kprobe:f { $x = (struct type1 *)cpu; $x->blah }", 1);
+  test(structs + "kprobe:f { @x = (struct type1 *)cpu; @x->blah }", 1);
 }
 
 TEST(semantic_analyser, field_access_wrong_expr)
@@ -1459,6 +1495,25 @@ TEST(semantic_analyser, field_access_is_internal)
     EXPECT_TRUE(map_assignment->map->type.is_internal);
     EXPECT_TRUE(var_assignment2->var->type.is_internal);
   }
+}
+
+TEST(semantic_analyser, struct_as_map_key)
+{
+  test("struct A { int x; } struct B { char x; } "
+       "kprobe:f { @x[*((struct A *)arg0)] = 0; }",
+       0);
+
+  test("struct A { int x; } struct B { char x; } "
+       "kprobe:f { @x[*((struct A *)arg0), *((struct B *)arg1)] = 0; }",
+       0);
+
+  // Mismatched key types
+  test("struct A { int x; } struct B { char x; } "
+       "kprobe:f { "
+       "    @x[*((struct A *)arg0)] = 0; "
+       "    @x[*((struct B *)arg1)] = 1; "
+       "}",
+       10);
 }
 
 TEST(semantic_analyser, probe_short_name)
@@ -2036,9 +2091,15 @@ TEST(semantic_analyser, tuple)
   test(R"_(BEGIN { @t = (1, kstack()) })_", 0);
   test(R"_(BEGIN { @t = (1, (2,3)) })_", 0);
 
+  test(R"_(struct task_struct { int x; } BEGIN { $t = (1, curtask); })_", 0);
+  test(R"_(struct task_struct { int x[4]; } BEGIN { $t = (1, curtask->x); })_",
+       0);
+
   test(R"_(BEGIN { $t = (1, 2); $t = (4, "other"); })_", 10);
   test(R"_(BEGIN { $t = (1, 2); $t = 5; })_", 1);
   test(R"_(BEGIN { $t = (1, count()) })_", 1);
+  test(R"_(BEGIN { $t = ((int32)1, (int64)2); $t = ((int64)1, (int32)2); })_",
+       10);
 
   test(R"_(BEGIN { @t = (1, 2); @t = (4, "other"); })_", 1);
   test(R"_(BEGIN { @t = (1, 2); @t = 5; })_", 1);
@@ -2064,8 +2125,13 @@ TEST(semantic_analyser, tuple_assign_var)
 {
   BPFtrace bpftrace;
   Driver driver(bpftrace);
-  SizedType ty = CreateTuple({ CreateInt64(), CreateString(64) });
-  test(driver, R"_(BEGIN { $t = (1, "str"); $t = (4, "other"); })_", 0);
+  SizedType ty = CreateTuple(
+      bpftrace.structs.AddTuple({ CreateInt64(), CreateString(64) }));
+  test(bpftrace,
+       true,
+       driver,
+       R"_(BEGIN { $t = (1, "str"); $t = (4, "other"); })_",
+       0);
 
   auto &stmts = driver.root_->probes->at(0)->stmts;
 
@@ -2084,20 +2150,24 @@ TEST(semantic_analyser, tuple_assign_map)
   BPFtrace bpftrace;
   Driver driver(bpftrace);
   SizedType ty;
-  test(driver, R"_(BEGIN { @ = (1, 3, 3, 7); @ = (0, 0, 0, 0); })_", 0);
+  test(bpftrace,
+       true,
+       driver,
+       R"_(BEGIN { @ = (1, 3, 3, 7); @ = (0, 0, 0, 0); })_",
+       0);
 
   auto &stmts = driver.root_->probes->at(0)->stmts;
 
   // $t = (1, 3, 3, 7);
   auto assignment = static_cast<ast::AssignMapStatement *>(stmts->at(0));
-  ty = CreateTuple(
-      { CreateInt64(), CreateUInt64(), CreateUInt64(), CreateUInt64() });
+  ty = CreateTuple(bpftrace.structs.AddTuple(
+      { CreateInt64(), CreateInt64(), CreateInt64(), CreateInt64() }));
   EXPECT_EQ(ty, assignment->map->type);
 
   // $t = (0, 0, 0, 0);
   assignment = static_cast<ast::AssignMapStatement *>(stmts->at(1));
-  ty = CreateTuple(
-      { CreateInt64(), CreateInt64(), CreateInt64(), CreateInt64() });
+  ty = CreateTuple(bpftrace.structs.AddTuple(
+      { CreateInt64(), CreateInt64(), CreateInt64(), CreateInt64() }));
   EXPECT_EQ(ty, assignment->map->type);
 }
 
@@ -2106,15 +2176,25 @@ TEST(semantic_analyser, tuple_nested)
 {
   BPFtrace bpftrace;
   Driver driver(bpftrace);
-  SizedType ty_inner = CreateTuple({ CreateInt64(), CreateInt64() });
-  SizedType ty = CreateTuple({ CreateInt64(), ty_inner });
-  test(driver, R"_(BEGIN { $t = (1,(1,2)); })_", 0);
+  SizedType ty_inner = CreateTuple(
+      bpftrace.structs.AddTuple({ CreateInt64(), CreateInt64() }));
+  SizedType ty = CreateTuple(
+      bpftrace.structs.AddTuple({ CreateInt64(), ty_inner }));
+  test(bpftrace, true, driver, R"_(BEGIN { $t = (1,(1,2)); })_", 0);
 
   auto &stmts = driver.root_->probes->at(0)->stmts;
 
   // $t = (1, "str");
   auto assignment = static_cast<ast::AssignVarStatement *>(stmts->at(0));
   EXPECT_EQ(ty, assignment->var->type);
+}
+
+TEST(semantic_analyser, tuple_types_unique)
+{
+  auto bpftrace = get_mock_bpftrace();
+  test(*bpftrace, R"_(BEGIN { $t = (1, "str"); $t = (4, "other"); })_", 0);
+
+  EXPECT_EQ(bpftrace->structs.GetTuplesCnt(), 1ul);
 }
 
 TEST(semantic_analyser, multi_pass_type_inference_zero_size_int)
@@ -2161,6 +2241,12 @@ TEST(semantic_analyser, int_ident)
   test("BEGIN { print(int32) }", 1);
 }
 
+TEST(semantic_analyser, tracepoint_common_field)
+{
+  test("tracepoint:file:filename { args->filename }", 0);
+  test("tracepoint:file:filename { args->common_field }", 1);
+}
+
 #ifdef HAVE_LIBBPF_BTF_DUMP
 
 #include "btf_common.h"
@@ -2168,6 +2254,8 @@ TEST(semantic_analyser, int_ident)
 class semantic_analyser_btf : public test_btf
 {
 };
+
+#ifdef HAVE_BCC_KFUNC
 
 TEST_F(semantic_analyser_btf, kfunc)
 {
@@ -2213,6 +2301,23 @@ TEST_F(semantic_analyser_btf, call_path)
 {
   test("kfunc:func_1 { $k = path( args->foo1 ) }", 0);
   test("kretfunc:func_1 { $k = path( retval->foo1 ) }", 0);
+}
+
+#endif // HAVE_BCC_KFUNC
+
+TEST_F(semantic_analyser_btf, iter)
+{
+  test("iter:task { 1 }", 0);
+  test("iter:task_file { 1 }", 0);
+  test("iter:task { $x = ctx->task->pid }", 0);
+  test("iter:task_file { $x = ctx->file->ino }", 0);
+  test("iter:task { $x = args->foo; }", 1);
+  test("iter:task_file { $x = args->foo; }", 1);
+  test("iter:task* { }", 1, true, false, 1, 1);
+  test("iter:task { printf(\"%d\", ctx->task->pid); }", 0);
+  test("iter:task_file { printf(\"%d\", ctx->file->ino); }", 0);
+  test("iter:task,iter:task_file { 1 }", 1);
+  test("iter:task,f:func_1 { 1 }", 1);
 }
 
 #endif // HAVE_LIBBPF_BTF_DUMP

@@ -9,6 +9,72 @@ and this project adheres to
 ## Unreleased
 
 #### Added
+- Build time dependency on cereal
+  - [#1893](https://github.com/iovisor/bpftrace/pull/1893)
+
+#### Changed
+
+#### Deprecated
+
+#### Removed
+
+#### Fixed
+- Fix memory leaks in struct types
+  - [#1885](https://github.com/iovisor/bpftrace/pull/1885)
+
+#### Tools
+
+#### Documentation
+
+## [0.13.0] 2021-07-01
+
+#### Added
+- Warn if attaching a kprobe to a non-traceable function
+  - [#1835](https://github.com/iovisor/bpftrace/pull/1835)
+- Support for `-k[k]` and `elapsed` in `iter` probes
+  - [#1882](https://github.com/iovisor/bpftrace/pull/1882)
+
+#### Changed
+- Disallow accessing common tracepoint fields
+  - [#1810](https://github.com/iovisor/bpftrace/pull/1810)
+- Improve JSON printing (nested structs)
+  - [#1778](https://github.com/iovisor/bpftrace/pull/1778)
+- Return 1 from tracepoint probes
+  - [#1857](https://github.com/iovisor/bpftrace/pull/1857)
+- Preserve original order of struct types
+  - [#1850](https://github.com/iovisor/bpftrace/pull/1850)
+- Forbid casting from/to struct types
+  - [#1873](https://github.com/iovisor/bpftrace/pull/1873)
+
+#### Deprecated
+
+#### Removed
+
+#### Fixed
+- Fix single arg wildcard probe listing
+  - [#1775](https://github.com/iovisor/bpftrace/pull/1775)
+- Fix --info reporting wrong libbpf build info
+  - [#1776](https://github.com/iovisor/bpftrace/pull/1776)
+- Reduce frequency of lost stack traces
+  - [#1812](https://github.com/iovisor/bpftrace/pull/1812)
+- Make kaddr() report failure for unknown kernel symbols
+  - [#1836](https://github.com/iovisor/bpftrace/pull/1836)
+- Fix false non-traceable function warnings
+  - [#1866](https://github.com/iovisor/bpftrace/pull/1866)
+- Fix memory leak in clang parser
+  - [#1878](https://github.com/iovisor/bpftrace/pull/1878)
+
+#### Tools
+
+#### Documentation
+
+## [0.12.1] 2021-04-16
+
+Incorrect --info output bug fix release
+
+## [0.12.0] 2021-04-01
+
+#### Added
 - Add path builtin
   - [#1492](https://github.com/iovisor/bpftrace/pull/1492)
 - Allow wildcards for tracepoint categories
@@ -56,6 +122,10 @@ and this project adheres to
   - [#1684](https://github.com/iovisor/bpftrace/pull/1684)
 - Add basic mips64 support
   - [#1599](https://github.com/iovisor/bpftrace/pull/1599)
+- Printing structures
+  - [#1705](https://github.com/iovisor/bpftrace/pull/1705)
+- Array indexing on pointers
+  - [#1739](https://github.com/iovisor/bpftrace/pull/1739)
 
 #### Changed
 - Warn if using `print` on `stats` maps with top and div arguments
@@ -84,6 +154,10 @@ and this project adheres to
   - [#1538](https://github.com/iovisor/bpftrace/pull/1538)
 - Unify semantics of wildcards in probe listing and attachement
   - [#1549](https://github.com/iovisor/bpftrace/pull/1549)
+- Improve codegen for structs and arrays
+  - [#1705](https://github.com/iovisor/bpftrace/pull/1705)
+- Do not unpack in-kernel headers if system has BTF
+  - [#1740](https://github.com/iovisor/bpftrace/pull/1740)
 
 #### Deprecated
 

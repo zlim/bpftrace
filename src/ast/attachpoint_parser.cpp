@@ -15,8 +15,9 @@ namespace ast {
 
 AttachPointParser::AttachPointParser(Program *root,
                                      BPFtrace &bpftrace,
-                                     std::ostream &sink)
-    : root_(root), bpftrace_(bpftrace), sink_(sink)
+                                     std::ostream &sink,
+                                     bool listing)
+    : root_(root), bpftrace_(bpftrace), sink_(sink), listing_(listing)
 {
 }
 
@@ -76,6 +77,9 @@ AttachPointParser::State AttachPointParser::parse_attachpoint(AttachPoint &ap)
   std::set<std::string> probe_types;
   if (has_wildcard(parts_.front()))
   {
+    // Single argument listing looks at all relevant probe types
+    std::string probetype_query = (parts_.size() == 1) ? "*" : parts_.front();
+
     // Probe type expansion
     // If PID is specified or the second part of the attach point is a path
     // (contains '/'), use userspace probe types.
@@ -84,12 +88,12 @@ AttachPointParser::State AttachPointParser::parse_attachpoint(AttachPoint &ap)
         (parts_.size() >= 2 && parts_[1].find('/') != std::string::npos))
     {
       probe_types = bpftrace_.probe_matcher_->expand_probetype_userspace(
-          parts_.front());
+          probetype_query);
     }
     else
     {
       probe_types = bpftrace_.probe_matcher_->expand_probetype_kernel(
-          parts_.front());
+          probetype_query);
     }
   }
   else
@@ -110,7 +114,8 @@ AttachPointParser::State AttachPointParser::parse_attachpoint(AttachPoint &ap)
     for (const auto &probe_type : probe_types)
     {
       std::string raw_input = ap.raw_input;
-      erase_prefix(raw_input);
+      if (parts_.size() > 1)
+        erase_prefix(raw_input);
       raw_input = probe_type + ":" + raw_input;
       // New attach points have ignore_invalid set to true - probe types for
       // which raw_input has invalid number of parts will be ignored (instead
@@ -151,6 +156,8 @@ AttachPointParser::State AttachPointParser::parse_attachpoint(AttachPoint &ap)
     case ProbeType::kfunc:
     case ProbeType::kretfunc:
       return kfunc_parser();
+    case ProbeType::iter:
+      return iter_parser();
     default:
       errs_ << "Unrecognized probe type: " << ap_->provider << std::endl;
       return INVALID;
@@ -468,8 +475,12 @@ AttachPointParser::State AttachPointParser::usdt_parser()
 
 AttachPointParser::State AttachPointParser::tracepoint_parser()
 {
-  if (parts_.size() == 2 && parts_.at(1) == "*")
-    parts_.push_back("*");
+  // Help with `bpftrace -l 'tracepoint:*foo*'` listing -- wildcard the
+  // tracepoint category b/c user is most likely to be looking for the event
+  // name
+  if (parts_.size() == 2 && has_wildcard(parts_.at(1)))
+    parts_.insert(parts_.begin() + 1, "*");
+
   if (parts_.size() != 3)
   {
     if (ap_->ignore_invalid)
@@ -726,6 +737,42 @@ AttachPointParser::State AttachPointParser::kfunc_parser()
     ap_->need_expansion = true;
 
   ap_->func = parts_[1];
+  return OK;
+}
+
+AttachPointParser::State AttachPointParser::iter_parser()
+{
+  if (parts_.size() != 2 && parts_.size() != 3)
+  {
+    if (ap_->ignore_invalid)
+      return SKIP;
+
+    errs_ << ap_->provider << " probe type takes 2 arguments (1 optional)"
+          << std::endl;
+    return INVALID;
+  }
+
+  if (parts_[1].find('*') != std::string::npos)
+  {
+    if (listing_)
+    {
+      ap_->need_expansion = true;
+    }
+    else
+    {
+      if (ap_->ignore_invalid)
+        return SKIP;
+
+      errs_ << ap_->provider << " probe type does not support wildcards"
+            << std::endl;
+      return INVALID;
+    }
+  }
+
+  ap_->func = parts_[1];
+
+  if (parts_.size() == 3)
+    ap_->pin = parts_[2];
   return OK;
 }
 
