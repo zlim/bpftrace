@@ -1,5 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+set -u
 set +e;
 
 if [[ $EUID -ne 0 ]]; then
@@ -8,35 +9,72 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-
 BPFTRACE_EXECUTABLE=${BPFTRACE_EXECUTABLE:-$DIR/../src/bpftrace};
-
 EXIT_STATUS=0;
-
 TOOLDIR=""
+OLDTOOLS=${TOOLS_TEST_OLDVERSION:-}
+IFS=',' read -ra SKIP_TOOLS <<< "${TOOLS_TEST_DISABLE:-"NONE"}"
 
-function tooldir() {
-    for dir in "../../tools" "/vagrant/tools"; do
-        if [[ -d "$dir" ]]; then
-            TOOLDIR="$dir"
-            return
-        fi
-    done
+function set_tooldir() {
+  local dir
+  dir=$(realpath "${DIR}/../../tools")
+  if [[ -d "$dir" ]]; then
+      TOOLDIR="$dir"
+      return
+  fi
 
-    >&2 echo "Tool dir not found"
-    exit 1
+  >&2 echo "Tool dir not found"
+  exit 1
 }
 
-tooldir
-
-for f in "$TOOLDIR"/*.bt; do
-  if $BPFTRACE_EXECUTABLE --unsafe -d $f 2>/dev/null >/dev/null; then
-    echo "$f    passed"
+function do_test() {
+  local file="$1"
+  local probes
+  if ! probes="$($BPFTRACE_EXECUTABLE -l "$file")"; then
+    echo "$file    failed, unable to list probes";
+  fi
+  if [[ -z "$probes" ]]; then
+    echo "$file    skipped";
+  elif $BPFTRACE_EXECUTABLE --unsafe -v --dry-run "$file" 2>/dev/null >/dev/null; then
+    echo "$file    passed"
   else
-    echo "$f    failed";
-    $BPFTRACE_EXECUTABLE --unsafe -d $f;
+    echo "$file    failed";
+    $BPFTRACE_EXECUTABLE --unsafe -v --dry-run "$file";
     EXIT_STATUS=1;
   fi
-done
+}
+
+function skip_test() {
+  local name
+  name="$(basename "$1")"
+  for i in "${SKIP_TOOLS[@]}"; do
+    if [[ "$i" == "$name" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+
+function do_tests () {
+  local f
+  local tool
+  for f in "$TOOLDIR"/*.bt; do
+    if skip_test "$f"; then
+      echo "Skipping $f"
+    else
+      if [[ $OLDTOOLS =~ $(basename "$f") ]]; then
+        tool="$(dirname "$f")/old/$(basename "$f")"
+        do_test "$tool"
+      else
+        do_test "$f"
+      fi
+    fi
+  done
+}
+
+
+set_tooldir
+do_tests
 
 exit $EXIT_STATUS

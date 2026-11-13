@@ -1,34 +1,28 @@
-#ifdef HAVE_SYSTEMTAP_SYS_SDT_H
-#include <sys/sdt.h>
-#else
-#define DTRACE_PROBE2(a, b, c, d) (void)0
-#endif
+#include <stdio.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <stdio.h>
 
-static long
-myclock() {
+#include "libbpf-usdt/usdt.h"
+
+static long myclock()
+{
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  DTRACE_PROBE2(tracetest,  testprobe,  tv.tv_sec, "Hello world");
-  DTRACE_PROBE2(tracetest,  testprobe2, tv.tv_sec, "Hello world2");
-  DTRACE_PROBE2(tracetest2, testprobe2, tv.tv_sec, "Hello world3");
+  static volatile char str1[] = "Hello World1";
+  static volatile char str2[] = "Hello World2";
+  static volatile char str3[] = "Hello World3";
+  USDT(tracetest, testprobe, tv.tv_sec, str1);
+  USDT(tracetest, testprobe2, tv.tv_sec, str2);
+  USDT(tracetest2, testprobe2, tv.tv_sec, str3);
   return tv.tv_sec;
 }
 
-int
-main(int argc, char **argv __attribute__((unused))) {
-  if (argc > 1)
-  // If we don't have Systemtap headers, we should skip USDT tests. Returning 1 can be used as validation in the REQUIRE
-#ifndef HAVE_SYSTEMTAP_SYS_SDT_H
-    return 1;
-#else
-    return 0;
-#endif
-
+int main()
+{
   while (1) {
     myclock();
+    // Reduce the frequency of events to reduce test flakyness
+    usleep(100000);
   }
   return 0;
 }

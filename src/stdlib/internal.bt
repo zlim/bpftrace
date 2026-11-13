@@ -1,0 +1,48 @@
+// Only add macros to this file if calls to these macros are
+// created by an AST pass that happens after ResolveRootImports
+// This is the only stdlib bt file that always gets imported
+
+// :summary Compares a specified number of bytes.
+// :variant int memcmp(left, right, uint64 count)
+// Compares the first `count` bytes of `left` and `right`.
+// Returns zero if they match.
+// Otherwise, returns a negative value if the first differing byte in `left` is smaller,
+// or a positive value if it is larger.
+//
+macro memcmp($left, $right, count)
+{
+  __builtin_memcmp(&$left, &$right, (uint64)count)
+}
+
+macro memcmp($left, right, count)
+{
+  $right = right;
+  memcmp($left, $right, count)
+}
+
+macro memcmp(left, $right, count)
+{
+  $left = left;
+  memcmp($left, $right, count)
+}
+
+macro memcmp(left, right, count)
+{
+  $left = left;
+  $right = right;
+  memcmp($left, $right, count)
+}
+
+macro memcmp_record(left, right, count)
+{
+  let $left = left;
+  // This ensures that the $right variable type has fields
+  // in the exact same order as the $left
+  let $right : typeof($left) = right;
+  memcmp($left, $right, count)
+}
+
+macro usdt_arg(x)
+{
+  uptr(__usdt_arg((void *)ctx, (int64)x))
+}

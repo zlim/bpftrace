@@ -1,179 +1,123 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ master, release/* ]
+  pull_request:
+    paths-ignore:
+      - "man/**"
+      - "docs/**"
+      - "**/*.md"
+
+# Cancel previous run if a new one is started
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   clang-format:
-    # Only run clang-format on pull requests. We want to allow people to
-    # ignore clang-format if they think it's not helpful.
-    if: "github.event_name == 'pull_request'"
     runs-on: ubuntu-latest
+    # For flakehub cache
+    permissions:
+      id-token: write
+      contents: read
     steps:
     - uses: actions/checkout@v2
-    - name: Install clang-format
-      run: sudo apt-get install clang-format
-    - name: Download git-clang-format
-      run: wget https://raw.githubusercontent.com/llvm-mirror/clang/master/tools/clang-format/git-clang-format
-    - name: Install git-clang-format
-      run: sudo install -t /bin git-clang-format
-    - name: Fetch origin master
-      run: git fetch --no-tags --prune --depth=1 origin master
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: DeterminateSystems/nix-installer-action@v17
+      with:
+        determinate: true
+    - uses: DeterminateSystems/flakehub-cache-action@v2
     - name: clang-format
-      run: git clang-format origin/master
-    - name: diff
-      run: git diff --exit-code
+      run: nix develop --command git clang-format --diff origin/master --extensions cpp,h
 
   build_test:
-    runs-on: ubuntu-18.04
+    # TODO: back to ubuntu-latest once actions/runner-images#15003 is fixed
+    runs-on: ${{ matrix.env.RUNS_ON || 'ubuntu-22.04' }}
+    # For flakehub cache
+    permissions:
+      id-token: write
+      contents: read
+    continue-on-error: true
     strategy:
       matrix:
         env:
-        - NAME: LLVM 6 Debug
-          TYPE: Debug
-          LLVM_VERSION: "6.0"
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 6 Release
-          TYPE: Release
-          LLVM_VERSION: "6.0"
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 7 Debug
-          TYPE: Debug
-          LLVM_VERSION: 7
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 7 Release
-          TYPE: Release
-          LLVM_VERSION: 7
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 8 Debug
-          TYPE: Debug
-          LLVM_VERSION: 8
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 8 Release
-          TYPE: Release
-          LLVM_VERSION: 8
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 9 Debug
-          TYPE: Debug
-          LLVM_VERSION: 9
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 9 Release
-          TYPE: Release
-          LLVM_VERSION: 9
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 10 Debug
-          TYPE: Debug
-          LLVM_VERSION: 10
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 10 Release
-          TYPE: Release
-          LLVM_VERSION: 10
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 10 Clang Debug
-          TYPE: Debug
-          LLVM_VERSION: 10
-          CC: clang-10
-          CXX: clang++-10
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 11 Debug
-          TYPE: Debug
-          LLVM_VERSION: 11
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
-        - NAME: LLVM 11 Release
-          TYPE: Release
-          LLVM_VERSION: 11
-          RUN_ALL_TESTS: 1
-          RUNTIME_TEST_DISABLE: builtin.cgroup,probe.kprobe_offset_fail_size
-          BASE: bionic
+        - NAME: LLVM 19
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm19
+          TOOLS_TEST_DISABLE: runqlen.bt
+        - NAME: LLVM 20
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm20
+          TOOLS_TEST_DISABLE: runqlen.bt
+        - NAME: LLVM 21
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm21
+          TOOLS_TEST_DISABLE: runqlen.bt
+        - NAME: LLVM 22
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm22
+          TOOLS_TEST_DISABLE: runqlen.bt
+        - NAME: LLVM 23 Release
+          CMAKE_BUILD_TYPE: Release
+          NIX_TARGET: .#bpftrace-llvm23
+          TOOLS_TEST_DISABLE: runqlen.bt
+        - NAME: LLVM 23 Release (arm64)
+          CMAKE_BUILD_TYPE: Release
+          NIX_TARGET: .#bpftrace-llvm23
+          TOOLS_TEST_DISABLE: runqlen.bt
+          RUNS_ON: ubuntu-22.04-arm
+        - NAME: LLVM 23 Debug
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm23
+          TOOLS_TEST_DISABLE: runqlen.bt
+        - NAME: LLVM 23 Clang Debug
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm23
+          CC: clang
+          CXX: clang++
+          TOOLS_TEST_DISABLE: runqlen.bt
+        - NAME: LLVM 23 + sanitizers
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm23
+          BUILD_ASAN: 1
+          BUILD_UBSAN: 1
+          TOOLS_TEST_DISABLE: runqlen.bt
+          RUNTIME_TESTS_FILTER: "-basic.it lists fentry params:-btf.user_supplied_c_def_using_btf:-strcontains.path:-list probes by pid$"
+        - NAME: Fuzzing
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-fuzz
+          CC: afl-clang-fast
+          CXX: afl-clang-fast++
+        - NAME: Latest kernel (LLVM 23 Debug)
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm23
+          NIX_TARGET_KERNEL: .#kernel-6_14
+          TOOLS_TEST_DISABLE: runqlen.bt # Need host 6.14 kernel
+          # These tests either causes soft lockups in the VM or timeout consistently
+          RUNTIME_TESTS_FILTER: "-basic.parallel map access:-strcontains.path"
+        - NAME: AOT (LLVM 23 Debug)
+          CMAKE_BUILD_TYPE: Debug
+          NIX_TARGET: .#bpftrace-llvm23
+          RUN_TESTS: 0
+          RUN_AOT_TESTS: 1
+          AOT_ALLOWLIST_FILE: .github/include/aot_allow.txt
     steps:
     - uses: actions/checkout@v2
-    - name: Get date
-      id: get-date
-      run: echo "::set-output name=date::$(/bin/date -u "+%Y.week%g")"
-      shell: bash
-    - name: Cache docker image
-      env: ${{matrix.env}}
-      id: docker-cache
-      uses: actions/cache@v2
       with:
-        path: /tmp/docker-save
-        # Key the cache entry by:
-        #   * the operating system
-        #   * the week (so cache gets invalidated every week)
-        #   * the image configuration (ie llvm version & distro)
-        #   * the hash of all the files in docker/
-        key: ${{ runner.os }}-docker-cache-${{ steps.get-date.outputs.date }}-${{ env.NAME }}-${{ hashFiles('docker/**') }}
-    - name: Build docker container
-      if: steps.docker-cache.outputs.cache-hit != 'true'
-      env: ${{matrix.env}}
-      run: >
-        docker build
-        --build-arg LLVM_VERSION=$LLVM_VERSION
-        -t bpftrace-builder-$BASE-llvm-$LLVM_VERSION
-        -f docker/Dockerfile.$BASE
-        docker/ &&
-        mkdir -p /tmp/docker-save &&
-        docker save bpftrace-builder-$BASE-llvm-$LLVM_VERSION -o /tmp/docker-save/i.tar
-    - name: Load the cached docker image (if available)
-      if: steps.docker-cache.outputs.cache-hit == 'true'
-      run: >
-        docker load --input /tmp/docker-save/i.tar
+        submodules: true
+    - uses: DeterminateSystems/nix-installer-action@v17
+      with:
+        determinate: true
+    - uses: DeterminateSystems/flakehub-cache-action@v2
+    - uses: ./.github/actions/configure_kvm
+    - name: Load kernel modules
+      # nf_tables and xfs are necessary for testing kernel modules BTF support
+      run: |
+        sudo modprobe nf_tables
+        sudo modprobe xfs
     - name: Build and test
       env: ${{matrix.env}}
-      run: >
-        docker run --privileged
-        -v $(pwd):$(pwd)
-        -w $(pwd)
-        -v /sys/kernel/debug:/sys/kernel/debug:rw
-        -v /lib/modules:/lib/modules:ro
-        -v /usr/src:/usr/src:ro
-        -e RUN_ALL_TESTS=${RUN_ALL_TESTS}
-        -e CMAKE_EXTRA_FLAGS="${CMAKE_EXTRA_FLAGS}"
-        -e RUNTIME_TEST_DISABLE="${RUNTIME_TEST_DISABLE}"
-        -e CC="${CC}"
-        -e CXX="${CXX}"
-        bpftrace-builder-$BASE-llvm-$LLVM_VERSION
-        ${PWD}/build-$TYPE-$BASE
-        $TYPE
-        -j$(nproc)
-
-  irc:
-    # Notify IRC of build failures on pushes only if we are running from
-    # the main repo. We don't want this rule to trigger from forked repos.
-    needs:
-      - build_test
-    if: "failure() && github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'iovisor/bpftrace'"
-    runs-on: ubuntu-latest
-    steps:
-    - name: Message channel
-      uses: rectalogic/notify-irc@v1
-      with:
-        nickname: bpftrace-ci-bot
-        server: irc.oftc.net
-        port: 6667
-        tls: false
-        channel: "#bpftrace"
-        message: |
-          master is BROKEN at https://github.com/iovisor/bpftrace/commit/${{github.sha}}
+      run: ./.github/include/ci.py

@@ -1,0 +1,76 @@
+NAME it can have side effects
+PROG macro print_me($x) { print(("me", $x)); } begin { $a = 1; print_me($a);  }
+EXPECT (me, 1)
+
+NAME it can exit early
+PROG macro early() { exit(); } begin { early(); print(1); }
+EXPECT_NONE 1
+
+# Test builtins
+NAME builtin wrapper comm
+PROG begin { if (__builtin_comm == comm() && __builtin_comm == comm) { print(comm); } }
+EXPECT bpftrace
+
+NAME builtin wrapper cpid
+RUN {{BPFTRACE}} -e 'begin { if (__builtin_cpid == cpid() && __builtin_cpid == cpid) { printf("SUCCESS %llu\n", cpid); } }' -c './testprogs/syscall nanosleep 1e9'
+EXPECT_REGEX SUCCESS [0-9]+
+TIMEOUT 3
+
+NAME builtin wrapper cpu
+PROG begin { if (__builtin_cpu == cpu() && __builtin_cpu == cpu) { printf("SUCCESS %llu\n", cpu); } }
+EXPECT_REGEX SUCCESS [0-9]+
+
+NAME builtin wrapper elapsed
+PROG begin { printf("SUCCESS1 %llu\n", __builtin_elapsed); printf("SUCCESS2 %llu\n", elapsed); printf("SUCCESS3 %llu\n", elapsed()); }
+EXPECT_REGEX SUCCESS1 [0-9]+
+EXPECT_REGEX SUCCESS2 [0-9]+
+EXPECT_REGEX SUCCESS3 [0-9]+
+
+NAME builtin wrapper func
+PROG k:vfs_read { if (__builtin_func == func() && __builtin_func == func) { print(func); } exit(); }
+EXPECT vfs_read
+AFTER ./testprogs/syscall read
+
+NAME builtin wrapper ncpus
+PROG begin { if (__builtin_ncpus == ncpus() && __builtin_ncpus == ncpus) { print(ncpus); } }
+EXPECT_REGEX ^[1-9][0-9]*$
+
+NAME builtin wrapper probe
+PROG k:do_nanosleep { if (__builtin_probe == probe() && __builtin_probe == probe) { print(probe); } exit(); }
+EXPECT kprobe:do_nanosleep
+AFTER ./testprogs/syscall nanosleep 1e8
+
+NAME builtin wrapper probetype
+PROG begin { if (__builtin_probetype == probetype() && __builtin_probetype == probetype) { print(probetype); } exit(); }
+EXPECT special
+
+NAME builtin wrapper retval
+PROG kretprobe:vfs_read { if (__builtin_retval == retval() && __builtin_retval == retval) { printf("SUCCESS %d\n", retval); exit(); } }
+EXPECT_REGEX SUCCESS .*
+AFTER ./testprogs/syscall read
+
+NAME builtin wrapper usermode
+PROG begin { if (__builtin_usermode == usermode() && __builtin_usermode == usermode) { printf("SUCCESS %d\n", usermode); } }
+EXPECT_REGEX SUCCESS 1
+ARCH x86_64
+
+NAME user macros override stdlib
+PROG macro cpu() { "hi" } begin { printf(cpu()); }
+EXPECT_REGEX hi
+
+NAME user macros don't override stdlib if different signature
+PROG macro cpu(x) { x } begin { print(cpu("hi")); printf("SUCCESS %llu\n", cpu()); }
+EXPECT_REGEX hi
+EXPECT_REGEX SUCCESS [0-9]+
+
+NAME user macros don't override indirect stdlib macros
+PROG macro assert_str(exp) { fail("boom") } begin { print(strlen("hi")); }
+EXPECT 2
+
+NAME user macros don't poison stdlib builtin calls
+PROG macro fail(x) { x } begin { print(strlen("hi")); }
+EXPECT 2
+
+NAME builtin wrapper config
+PROG BEGIN { if (config().max_strlen == __builtin_config.max_strlen) { printf("match"); } exit(); }
+EXPECT match

@@ -1,25 +1,15 @@
-#include "log.h"
-#include "mocks.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include <iostream>
 
-namespace bpftrace {
-namespace test {
-namespace log {
+#include "log.h"
+#include "gtest/gtest.h"
+
+namespace bpftrace::test::log {
 
 TEST(LogStream, basic)
 {
   std::ostringstream ss;
   const std::string content_1 = "hello world";
   const std::string content_2 = "some messages 100###**";
-
-  // clang-format off
-  LOG(DEBUG, ss) << content_1; std::string file = __FILE__; int line = __LINE__;
-  // clang-format on
-  std::string prefix = "[" + file + ":" + std::to_string(line) + "] ";
-  EXPECT_EQ(ss.str(), "DEBUG: " + prefix + content_1 + "\n");
-  ss.str({});
 
   LOG(WARNING, ss) << content_1 << content_2;
   EXPECT_EQ(ss.str(), "WARNING: " + content_1 + content_2 + "\n");
@@ -29,28 +19,84 @@ TEST(LogStream, basic)
                  << content_1 << content_2 << content_1 << content_2 << "\n";
   const std::string content_long = content_1 + content_2 + content_1 +
                                    content_2;
-  EXPECT_EQ(ss.str(), "ERROR: " + content_long + "\n" + content_long + "\n\n");
+  EXPECT_EQ(ss.str(), "ERROR: " + content_long + "\n" + content_long + "\n");
   ss.str({});
 
   // test macro with 1 argument
-  auto cerr_buf = std::cerr.rdbuf(ss.rdbuf());
-  LOG(INFO) << content_1 << content_2;
-  EXPECT_EQ(ss.str(), "INFO: " + content_1 + content_2 + "\n");
+  ENABLE_LOG(V1);
+  auto *cerr_buf = std::cerr.rdbuf(ss.rdbuf());
+  LOG(V1) << content_1 << content_2;
+  EXPECT_EQ(ss.str(), content_1 + content_2 + "\n");
   std::cerr.rdbuf(cerr_buf);
+  DISABLE_LOG(V1);
+}
+
+TEST(LogStream, basic_colorized)
+{
+  std::ostringstream ss;
+  const std::string content_1 = "hello world";
+  const std::string content_2 = "some messages 100###**";
+
+  const std::string warning_color = std::string(bpftrace::LogColor::YELLOW);
+  const std::string error_color = std::string(bpftrace::LogColor::RED);
+  const std::string default_color = std::string(bpftrace::LogColor::RESET);
+
+  Log::get().set_colorize(true);
+
+  LOG(WARNING, ss) << content_1 << content_2;
+  EXPECT_EQ(ss.str(),
+            warning_color + "WARNING: " + content_1 + content_2 +
+                default_color + "\n");
+  ss.str({});
+
+  LOG(ERROR, ss) << content_1 << content_2 << content_1 << content_2 << "\n"
+                 << content_1 << content_2 << content_1 << content_2 << "\n";
+  const std::string content_long = content_1 + content_2 + content_1 +
+                                   content_2;
+  EXPECT_EQ(ss.str(),
+            error_color + "ERROR: " + content_long + "\n" + content_long +
+                default_color + "\n");
+
+  Log::get().set_colorize(false);
+  ss.str({});
+
+  // test macro with 1 argument
+  ENABLE_LOG(V1);
+  auto *cerr_buf = std::cerr.rdbuf(ss.rdbuf());
+  LOG(V1) << content_1 << content_2;
+  EXPECT_EQ(ss.str(), content_1 + content_2 + "\n");
+  std::cerr.rdbuf(cerr_buf);
+  DISABLE_LOG(V1);
 }
 
 TEST(LogStream, with_location)
 {
+  std::string location = "stdin:xyz";
+  std::vector<std::string> context({ "ctx1", "ctx2" });
+
   std::ostringstream ss;
-  const std::string filename = "stdin";
-  const std::string source = "i:s:1 { print(1, 2); }";
-  const std::string expected =
-      "stdin:1:9-20: ERROR: Non-map print() only takes 1 argument, 2 "
-      "found\ni:s:1 { print(1, 2); }\n        ~~~~~~~~~~~\n";
-  bpftrace::location loc(bpftrace::position(nullptr, 1, 9),
-                         bpftrace::position(nullptr, 1, 20));
-  Log::get().set_source(filename, source);
-  LOG(ERROR, loc, ss) << "Non-map print() only takes 1 argument, 2 found";
+  const std::string expected = "stdin:xyz: ERROR: test error\n"
+                               "ctx1\n"
+                               "ctx2\n";
+  LOG(ERROR, std::move(location), std::move(context), ss) << "test error";
+  EXPECT_EQ(ss.str(), expected);
+}
+
+TEST(LogStream, with_location_colorized)
+{
+  std::string location = "stdin:xyz";
+  std::vector<std::string> context({ "ctx1", "ctx2" });
+
+  std::ostringstream ss;
+  const std::string error_color = std::string(bpftrace::LogColor::RED);
+  const std::string default_color = std::string(bpftrace::LogColor::RESET);
+
+  const std::string expected = error_color + "stdin:xyz: ERROR: test error" +
+                               default_color + "\n" + "ctx1\n" + "ctx2\n";
+  Log::get().set_colorize(true);
+  LOG(ERROR, std::move(location), std::move(context), ss) << "test error";
+  Log::get().set_colorize(false);
+
   EXPECT_EQ(ss.str(), expected);
 }
 
@@ -74,6 +120,33 @@ TEST(Log, disable_log_type)
   ss.str({});
 }
 
-} // namespace log
-} // namespace test
-} // namespace bpftrace
+TEST(LogStreamBug, log_stream_bug_should_be_aborted)
+{
+  const std::string content = "I'm gonna die";
+
+  auto output = [&content](int line) {
+    const std::string filename = __FILE__;
+    return "BUG: \\[" + filename + ":" + std::to_string(line) + "\\] " +
+           content;
+  };
+  EXPECT_DEATH(LOG(BUG) << content, output(__LINE__));
+}
+
+TEST(LogStreamBug, log_stream_bug_colorized)
+{
+  Log::get().set_colorize(true);
+  const std::string content = "I'm gonna die";
+
+  auto output = [&content](int line) {
+    // Escape [ to avoid being captured by regex
+    const std::string bug_color = "\033\\[31m";
+    const std::string default_color = "\033\\[0m";
+    const std::string filename = __FILE__;
+    return bug_color + "BUG: \\[" + filename + ":" + std::to_string(line) +
+           "\\] " + content + default_color;
+  };
+  EXPECT_DEATH(LOG(BUG) << content, output(__LINE__));
+  Log::get().set_colorize(false);
+}
+
+} // namespace bpftrace::test::log

@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct Foo
-{
+struct Foo {
   char* a;
   char b[4];
   uint8_t c[4];
@@ -25,7 +24,7 @@ int main()
                      .d = { 5, 6, 7, 8 },
                      .e = { 9, 10, 11, 12 },
                      .f = { 13, 14, 15, 16 } };
-  strcpy(foo.a, "\x09\x08\x07\x06");
+  memcpy(foo.a, "\x09\x08\x07\x06", 4);
   func(&foo);
   free(foo.a);
   return 0;

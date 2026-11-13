@@ -1,10 +1,10 @@
-# - Try to find libbfd
+# - Try to find libopcodes
 # Once done this will define
 #
-#  LIBOPCODES_FOUND - system has libbfd
-#  LIBOPCODES_INCLUDE_DIRS - the libbfd include directory
-#  LIBOPCODES_LIBRARIES - Link these to use libbfd
-#  LIBOPCODES_DEFINITIONS - Compiler switches required for using libbfd
+#  LIBOPCODES_FOUND - system has libopcodes
+#  LIBOPCODES_INCLUDE_DIRS - the libopcodes include directory
+#  LIBOPCODES_LIBRARIES - Link these to use libopcodes
+#  LIBOPCODES_DEFINITIONS - Compiler switches required for using libopcodes
 
 #if (LIBOPCODES_LIBRARIES AND LIBOPCODES_INCLUDE_DIRS)
 #  set (LibBpf_FIND_QUIETLY TRUE)
@@ -14,22 +14,12 @@ find_path (LIBOPCODES_INCLUDE_DIRS
   NAMES
     dis-asm.h
   PATHS
-    /usr/include
-    /usr/local/include
-    /opt/local/include
-    /sw/include
     ENV CPATH)
 
 find_library (LIBOPCODES_LIBRARIES
   NAMES
     opcodes
   PATHS
-    /lib
-    /usr/lib
-    /usr/local/lib
-    /opt/local/lib
-    /usr/lib/x86_64-linux-gnu/
-    /sw/lib
     ENV LIBRARY_PATH
     ENV LD_LIBRARY_PATH)
 

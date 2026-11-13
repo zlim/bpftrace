@@ -1,145 +1,134 @@
-# bpftrace
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/bpftrace_Full_Logo-White.svg"/>
+    <img alt="bpftrace" src="images/bpftrace_Full_Logo-Black.svg" width="60%"/>
+  </picture>
+</p>
 
-[![Build Status](https://github.com/iovisor/bpftrace/workflows/CI/badge.svg?branch=master)](https://github.com/iovisor/bpftrace/actions?query=workflow%3ACI+branch%3Amaster)
-[![IRC #bpftrace](https://img.shields.io/badge/IRC-bpftrace-blue.svg)](http://irc.lc/oftc/bpftrace/web@@@)
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/iovisor/bpftrace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/iovisor/bpftrace/alerts/)
+[![Build Status](https://github.com/bpftrace/bpftrace/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/bpftrace/bpftrace/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/bpftrace/bpftrace)](https://github.com/bpftrace/bpftrace/releases/latest)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/bpftrace/bpftrace/blob/master/LICENSE)
 
-bpftrace is a high-level tracing language for Linux enhanced Berkeley Packet Filter (eBPF) available in recent Linux kernels (4.x). bpftrace uses LLVM as a backend to compile scripts to BPF-bytecode and makes use of [BCC](https://github.com/iovisor/bcc) for interacting with the Linux BPF system, as well as existing Linux tracing capabilities: kernel dynamic tracing (kprobes), user-level dynamic tracing (uprobes), and tracepoints. The bpftrace language is inspired by awk and C, and predecessor tracers such as DTrace and SystemTap. bpftrace was created by [Alastair Robertson](https://github.com/ajor).
+bpftrace is a general purpose tracing tool and language for Linux. It leverages [eBPF](https://ebpf.io/what-is-ebpf/) to provide powerful, efficient tracing capabilities with minimal overhead.
+bpftrace uses [LLVM](https://llvm.org/) as a compiler backend, and [libbpf](https://github.com/libbpf/libbpf) for interacting with the Linux BPF subsystem, including kernel dynamic tracing ([kprobes](https://docs.kernel.org/trace/kprobes.html), [hardware and software perf events](https://docs.ebpf.io/linux/program-type/BPF_PROG_TYPE_PERF_EVENT/)), user-level dynamic tracing ([USDT](https://docs.ebpf.io/linux/concepts/usdt/), [uprobes](https://docs.ebpf.io/linux/program-type/BPF_PROG_TYPE_KPROBE/)), tracepoints ([regular](https://docs.ebpf.io/linux/program-type/BPF_PROG_TYPE_TRACEPOINT/), [raw](https://docs.ebpf.io/linux/program-type/BPF_PROG_TYPE_RAW_TRACEPOINT/)), and [more](https://docs.ebpf.io/linux/program-type/BPF_PROG_TYPE_TRACING/).
+The bpftrace language is inspired by awk, C, and predecessor tracers such as DTrace and SystemTap.
 
-To learn more about bpftrace, see the [Reference Guide](docs/reference_guide.md) and [One-Liner Tutorial](docs/tutorial_one_liners.md).
+Visit **[bpftrace.org](https://bpftrace.org/)** for [tutorials](https://bpftrace.org/tutorial-one-liners), [documentation](https://bpftrace.org/docs), and [labs](https://bpftrace.org/hol/intro)!
 
-## One-Liners
+This respository also contains some [canonical tools](tools/README.md).
 
-The following one-liners demonstrate different capabilities:
+For migrating from older versions, see the [migration guide](docs/migration_guide.md).
 
-```
-# Files opened by process
-bpftrace -e 'tracepoint:syscalls:sys_enter_open { printf("%s %s\n", comm, str(args->filename)); }'
+## Quick Start
 
-# Syscall count by program
-bpftrace -e 'tracepoint:raw_syscalls:sys_enter { @[comm] = count(); }'
+Get started with bpftrace in just a few minutes! To build from source, see the [development guide](docs/developers.md#building). However, you can often install it using your distribution's [package manager](https://pkgs.org/search/?q=bpftrace).
 
-# Read bytes by process:
-bpftrace -e 'tracepoint:syscalls:sys_exit_read /args->ret/ { @[comm] = sum(args->ret); }'
+> [!IMPORTANT]
+> When using a distribution package, be sure to verify `bpftrace --version` when referencing documentation.
 
-# Read size distribution by process:
-bpftrace -e 'tracepoint:syscalls:sys_exit_read { @[comm] = hist(args->ret); }'
-
-# Show per-second syscall rates:
-bpftrace -e 'tracepoint:raw_syscalls:sys_enter { @ = count(); } interval:s:1 { print(@); clear(@); }'
-
-# Trace disk size by process
-bpftrace -e 'tracepoint:block:block_rq_issue { printf("%d %s %d\n", pid, comm, args->bytes); }'
-
-# Count page faults by process
-bpftrace -e 'software:faults:1 { @[comm] = count(); }'
-
-# Count LLC cache misses by process name and PID (uses PMCs):
-bpftrace -e 'hardware:cache-misses:1000000 { @[comm, pid] = count(); }'
-
-# Profile user-level stacks at 99 Hertz, for PID 189:
-bpftrace -e 'profile:hz:99 /pid == 189/ { @[ustack] = count(); }'
-
-# Files opened, for processes in the root cgroup-v2
-bpftrace -e 'tracepoint:syscalls:sys_enter_openat /cgroup == cgroupid("/sys/fs/cgroup/unified/mycg")/ { printf("%s\n", str(args->filename)); }'
-```
-
-More powerful scripts can easily be constructed. See [Tools](tools) for examples.
-
-## Install
-
-For build and install instructions, see [INSTALL.md](INSTALL.md).
-
-## Tools
-
-bpftrace contains various tools, which also serve as examples of programming in the bpftrace language.
-
-- tools/[bashreadline.bt](tools/bashreadline.bt): Print entered bash commands system wide. [Examples](tools/bashreadline_example.txt).
-- tools/[biolatency.bt](tools/biolatency.bt): Block I/O latency as a histogram. [Examples](tools/biolatency_example.txt).
-- tools/[biosnoop.bt](tools/biosnoop.bt): Block I/O tracing tool, showing per I/O latency. [Examples](tools/biosnoop_example.txt).
-- tools/[biostacks.bt](tools/biostacks.bt): Show disk I/O latency with initialization stacks. [Examples](tools/biostacks_example.txt).
-- tools/[bitesize.bt](tools/bitesize.bt): Show disk I/O size as a histogram. [Examples](tools/bitesize_example.txt).
-- tools/[capable.bt](tools/capable.bt): Trace security capability checks. [Examples](tools/capable_example.txt).
-- tools/[cpuwalk.bt](tools/cpuwalk.bt): Sample which CPUs are executing processes. [Examples](tools/cpuwalk_example.txt).
-- tools/[dcsnoop.bt](tools/dcsnoop.bt): Trace directory entry cache (dcache) lookups. [Examples](tools/dcsnoop_example.txt).
-- tools/[execsnoop.bt](tools/execsnoop.bt): Trace new processes via exec() syscalls. [Examples](tools/execsnoop_example.txt).
-- tools/[gethostlatency.bt](tools/gethostlatency.bt): Show latency for getaddrinfo/gethostbyname[2] calls. [Examples](tools/gethostlatency_example.txt).
-- tools/[killsnoop.bt](tools/killsnoop.bt): Trace signals issued by the kill() syscall. [Examples](tools/killsnoop_example.txt).
-- tools/[loads.bt](tools/loads.bt): Print load averages. [Examples](tools/loads_example.txt).
-- tools/[mdflush.bt](tools/mdflush.bt): Trace md flush events. [Examples](tools/mdflush_example.txt).
-- tools/[naptime.bt](tools/naptime.bt): Show voluntary sleep calls. [Examples](tools/naptime_example.txt).
-- tools/[opensnoop.bt](tools/opensnoop.bt): Trace open() syscalls showing filenames. [Examples](tools/opensnoop_example.txt).
-- tools/[oomkill.bt](tools/oomkill.bt): Trace OOM killer. [Examples](tools/oomkill_example.txt).
-- tools/[pidpersec.bt](tools/pidpersec.bt): Count new processes (via fork). [Examples](tools/pidpersec_example.txt).
-- tools/[runqlat.bt](tools/runqlat.bt): CPU scheduler run queue latency as a histogram. [Examples](tools/runqlat_example.txt).
-- tools/[runqlen.bt](tools/runqlen.bt): CPU scheduler run queue length as a histogram. [Examples](tools/runqlen_example.txt).
-- tools/[setuids.bt](tools/setuids.bt): Trace the setuid syscalls: privilege escalation. [Examples](tools/setuids_example.txt).
-- tools/[statsnoop.bt](tools/statsnoop.bt): Trace stat() syscalls for general debugging. [Examples](tools/statsnoop_example.txt).
-- tools/[swapin.bt](tools/swapin.bt): Show swapins by process. [Examples](tools/swapin_example.txt).
-- tools/[syncsnoop.bt](tools/syncsnoop.bt): Trace sync() variety of syscalls. [Examples](tools/syncsnoop_example.txt).
-- tools/[syscount.bt](tools/syscount.bt): Count system calls. [Examples](tools/syscount_example.txt).
-- tools/[tcpaccept.bt](tools/tcpaccept.bt): Trace TCP passive connections (accept()). [Examples](tools/tcpaccept_example.txt).
-- tools/[tcpconnect.bt](tools/tcpconnect.bt): Trace TCP active connections (connect()). [Examples](tools/tcpconnect_example.txt).
-- tools/[tcpdrop.bt](tools/tcpdrop.bt): Trace kernel-based TCP packet drops with details. [Examples](tools/tcpdrop_example.txt).
-- tools/[tcplife.bt](tools/tcplife.bt): Trace TCP session lifespans with connection details. [Examples](tools/tcplife_example.txt).
-- tools/[tcpretrans.bt](tools/tcpretrans.bt): Trace TCP retransmits. [Examples](tools/tcpretrans_example.txt).
-- tools/[tcpsynbl.bt](tools/tcpsynbl.bt): Show TCP SYN backlog as a histogram. [Examples](tools/tcpsynbl_example.txt).
-- tools/[threadsnoop.bt](tools/threadsnoop.bt): List new thread creation. [Examples](tools/threadsnoop_example.txt).
-- tools/[vfscount.bt](tools/vfscount.bt): Count VFS calls. [Examples](tools/vfscount_example.txt).
-- tools/[vfsstat.bt](tools/vfsstat.bt): Count some VFS calls, with per-second summaries. [Examples](tools/vfsstat_example.txt).
-- tools/[writeback.bt](tools/writeback.bt): Trace file system writeback events with details. [Examples](tools/writeback_example.txt).
-- tools/[xfsdist.bt](tools/xfsdist.bt): Summarize XFS operation latency distribution as a histogram. [Examples](tools/xfsdist_example.txt).
-
-For more eBPF observability tools, see [bcc tools](https://github.com/iovisor/bcc#tools).
-
-## Probe types
-<center><a href="images/bpftrace_probes_2018.png"><img src="images/bpftrace_probes_2018.png" border=0 width=700></a></center>
-
-See the [Reference Guide](docs/reference_guide.md) for more detail.
-
-## Support
-
-For additional help / discussion, please use our [discussions](https://github.com/iovisor/bpftrace/discussions) page.
+<table>
+  <tr>
+    <td valign="middle">Distributions</td>
+    <td valign="middle">Command</td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://packages.ubuntu.com/jammy/bpftrace"><img src="https://repology.org/badge/version-for-repo/ubuntu_22_04/bpftrace.svg" alt="Ubuntu 22.04"/></a>
+    <a href="https://packages.ubuntu.com/noble/bpftrace"><img src="https://repology.org/badge/version-for-repo/ubuntu_24_04/bpftrace.svg" alt="Ubuntu 24.04"/></a>
+    <a href="https://packages.ubuntu.com/plucky/bpftrace"><img src="https://repology.org/badge/version-for-repo/ubuntu_25_04/bpftrace.svg" alt="Ubuntu 25.04"/></a>
+    <a href="https://packages.ubuntu.com/questing/bpftrace"><img src="https://repology.org/badge/version-for-repo/ubuntu_25_10/bpftrace.svg" alt="Ubuntu 25.10"/></a>
+    <a href="https://packages.debian.org/trixie/bpftrace"><img src="https://repology.org/badge/version-for-repo/debian_13/bpftrace.svg" alt="Debian 13"/></a>
+    <a href="https://packages.debian.org/forky/bpftrace"><img src="https://repology.org/badge/version-for-repo/debian_14/bpftrace.svg" alt="Debian 14"/></a>
+    <a href="https://packages.debian.org/sid/bpftrace"><img src="https://repology.org/badge/version-for-repo/debian_unstable/bpftrace.svg" alt="Debian Unstable"/></a>
+    </td>
+    <td valign="middle">
+    <pre lang="bash">sudo apt install bpftrace<pre>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://packages.fedoraproject.org/pkgs/bpftrace/bpftrace/fedora-42-updates.html"><img src="https://repology.org/badge/version-for-repo/fedora_42/bpftrace.svg" alt="Fedora 42"/></a>
+    <a href="https://packages.fedoraproject.org/pkgs/bpftrace/bpftrace/fedora-43.html"><img src="https://repology.org/badge/version-for-repo/fedora_43/bpftrace.svg" alt="Fedora 43"/></a>
+    <a href="https://packages.fedoraproject.org/pkgs/bpftrace/bpftrace/fedora-rawhide.html"><img src="https://repology.org/badge/version-for-repo/fedora_rawhide/bpftrace.svg" alt="Fedora Rawhide"/></a>
+    <a href="https://centos.pkgs.org/9/centos-crb-x86_64/"><img src="https://repology.org/badge/version-for-repo/centos_stream_9/bpftrace.svg" alt="CentOS 9"/></a>
+    <a href="https://centos.pkgs.org/10/centos-crb-x86_64/"><img src="https://repology.org/badge/version-for-repo/centos_stream_10/bpftrace.svg" alt="CentOS 10"/></a>
+    </td>
+    <td valign="middle">
+    <pre lang="bash">sudo dnf install bpftrace</pre>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://pkgs.alpinelinux.org/packages?name=bpftrace&branch=v3.21"><img src="https://repology.org/badge/version-for-repo/alpine_3_21/bpftrace.svg" alt="Alpine 3.21"/></a>
+    <a href="https://pkgs.alpinelinux.org/packages?name=bpftrace&branch=v3.22"><img src="https://repology.org/badge/version-for-repo/alpine_3_22/bpftrace.svg" alt="Alpine 3.22"/></a>
+    <a href="https://pkgs.alpinelinux.org/packages?name=bpftrace&branch=edge"><img src="https://repology.org/badge/version-for-repo/alpine_edge/bpftrace.svg" alt="Alpine Edge"/></a>
+    </td>
+    <td valign="middle">
+    <pre lang="bash">sudo apk add bpftrace</pre>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://archlinux.org/packages/extra/x86_64/bpftrace/"><img src="https://repology.org/badge/version-for-repo/arch/bpftrace.svg" alt="Arch Linux"/></a>
+    </td>
+    <td valign="middle">
+    <pre lang="bash">sudo pacman -S bpftrace</pre>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://packages.gentoo.org/packages/dev-util/bpftrace"><img src="https://repology.org/badge/version-for-repo/gentoo/bpftrace.svg" alt="Gentoo"/></a>
+    </td>
+    <td valign="middle">
+    <pre lang="bash">sudo emerge -av bpftrace</pre>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://search.nixos.org/packages?query=bpftrace"><img src="https://repology.org/badge/version-for-repo/nix_unstable/bpftrace.svg" alt="nixpkgs"/></a>
+    </td>
+    <td valign="middle">
+    <pre lang="bash">nix-shell -p bpftrace</pre>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://software.opensuse.org/package/bpftrace"><img src="https://repology.org/badge/version-for-repo/opensuse_tumbleweed/bpftrace.svg" alt="openSUSE Tumbleweed"/></a>
+    </td>
+    <td valign="middle">
+    <pre lang="bash">sudo zypper install bpftrace</pre>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle">
+    <a href="https://github.com/bpftrace/bpftrace/actions/workflows/binary.yml"><img src="https://img.shields.io/badge/AppImage-nightly-green" alt="AppImage (nightly)"></a>
+    </td>
+    <td valign="middle">
+<pre lang="bash">declare -A suffixes=([x86_64]="X64" [amd64]="AMD64");
+declare prefix="bpftrace/bpftrace/workflows/binary/master/bpftrace";
+declare url="https://nightly.link/${prefix}-${suffixes[$(uname -m)]}.zip";
+curl -L -o bpftrace.zip "${url}" && unzip bpftrace.zip</pre>
+    </td>
+  </tr>
+</table>
 
 ## Contributing
 
-* Have ideas for new bpftrace tools? [CONTRIBUTING-TOOLS.md](CONTRIBUTING-TOOLS.md)
+See our [contributing guide](CONTRIBUTING.md) for details on how to contribute, and our [governance](GOVERNANCE.md) document for details on how the project is run.
 
-* Bugs reports and feature requests: [Issue Tracker](https://github.com/iovisor/bpftrace/issues)
+If you have tools built with bpftrace that you'd like to submit, please contribute to the [user-tools repository](https://github.com/bpftrace/user-tools/blob/master/CONTRIBUTING.md).
 
-* bpftrace development IRC: #bpftrace at irc.oftc.net
+## Building
 
-## Development
+For full build instructions (Nix or distro-native), see the
+[development guide](docs/developers.md#building).
 
-For development and testing a [Vagrantfile](Vagrantfile) is available.
+## Community & Support
 
-Make sure you have the `vbguest` plugin installed, it is required to correctly
-install the shared file system driver on the ubuntu boxes:
+bpftrace is built and maintained by a diverse community of contributors, users, and organizations who rely on it for production tracing and debugging.
 
-```
-$ vagrant plugin install vagrant-vbguest
-```
-
-Start VM:
-
-```
-$ vagrant status
-$ vagrant up $YOUR_CHOICE
-$ vagrant ssh $YOUR_CHOICE
-```
-
-## License
-
-Copyright 2019 Alastair Robertson
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+**Get help or get involved:**
+- 💬 [GitHub Discussions](https://github.com/bpftrace/bpftrace/discussions) - Ask questions
+- 🐛 [Issue Tracker](https://github.com/bpftrace/bpftrace/issues) - Report bugs and request features
+- 📅 [Monthly Office Hours](https://docs.google.com/document/d/1nt010RfL4s4gydhCPSJ-Z5mnFMFuD4NrcpVmUcyvu2E/edit?usp=sharing) - Open to everyone
+- 💬 [Discord](https://discord.gg/3tnjU2fTWr) - Open to everyone (if the link expired, write to #4916)

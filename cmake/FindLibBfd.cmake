@@ -16,40 +16,20 @@ find_path (LIBBFD_INCLUDE_DIRS
   NAMES
     bfd.h
   PATHS
-    /usr/include
-    /usr/local/include
-    /opt/local/include
-    /sw/include
     ENV CPATH)
 
 find_library (LIBBFD_LIBRARIES
   NAMES
     bfd
   PATHS
-    /lib
-    /usr/lib
-    /usr/local/lib
-    /opt/local/lib
-    /usr/lib/x86_64-linux-gnu/
-    /sw/lib
     ENV LIBRARY_PATH
     ENV LD_LIBRARY_PATH)
 
-# libbfd.so is statically linked with libiberty.a but libbfd.a
-# is not. So if we do a static bpftrace build, we must link in
-# libiberty.a
-find_library (LIBIBERTY_LIBRARIES
-  NAMES
-    libiberty.a
-  PATHS
-    /lib
-    /usr/lib
-    /usr/local/lib
-    /opt/local/lib
-    /usr/lib/x86_64-linux-gnu/
-    /sw/lib
-    ENV LIBRARY_PATH
-    ENV LD_LIBRARY_PATH)
+if (${LIBBFD_LIBRARIES} MATCHES ".*libbfd.a$")
+  set(LIBBFD_STATIC TRUE)
+else()
+  set(LIBBFD_STATIC FALSE)
+endif()
 
 include (FindPackageHandleStandardArgs)
 
@@ -64,32 +44,50 @@ mark_as_advanced(LIBBFD_INCLUDE_DIRS LIBBFD_LIBRARIES)
 if(${LIBBFD_FOUND})
 find_package(LibOpcodes)
 SET(CMAKE_REQUIRED_LIBRARIES ${LIBBFD_LIBRARIES} ${LIBOPCODES_LIBRARIES})
-# libbfd.a is not statically linked with libiberty.a or libz.a so we must manually
-# do it. Furthermore, libbfd uses some libc symbols that we must manually
-# link against if we're not using static libc (which includes such symbols).
-if(STATIC_LINKING)
-  find_package(LibZ)
-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBIBERTY_LIBRARIES} ${LIBZ_LIBRARIES})
-  if(NOT STATIC_LIBC)
-    set(CMAKE_REQUIRED_FLAGS
-      "-Wl,--start-group -Wl,-Bdynamic -Wl,-Bdynamic -lpthread -Wl,-Bdynamic -ldl")
-  endif()
+if (LIBZSTD_LIBRARIES)
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBZSTD_LIBRARIES})
+endif(LIBZSTD_LIBRARIES)
+if(STATIC_LINKING OR LIBBFD_STATIC)
+  # libbfd.so is linked with the required libraries but libbfd.a is not.
+  # So if we do a static bpftrace build or libbfd.so is not available (e.g. on
+  # openSUSE), we must link them manually.
+  # Furthermore, libbfd uses some libc symbols that we must manually link
+  # against if we're not using static libc (which includes such symbols).
+  message(STATUS "Using static libbfd, need to link additional libraries.")
+  find_package(ZLIB)
+  find_library (LIBIBERTY_LIBRARIES
+    NAMES
+      iberty
+    PATHS
+      ENV LIBRARY_PATH
+      ENV LD_LIBRARY_PATH)
+  find_library (LIBSFRAME_LIBRARIES
+    NAMES
+      sframe
+    PATHS
+      ENV LIBRARY_PATH
+      ENV LD_LIBRARY_PATH)
+
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBIBERTY_LIBRARIES} ${ZLIB_LIBRARIES})
+  if (LIBSFRAME_LIBRARIES)
+    list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBSFRAME_LIBRARIES})
+  endif(LIBSFRAME_LIBRARIES)
+  if (LIBZSTD_LIBRARIES)
+    list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBZSTD_LIBRARIES})
+  endif(LIBZSTD_LIBRARIES)
+
+  set(CMAKE_REQUIRED_FLAGS "-Wl,--start-group -Wl,-Bdynamic -Wl,-Bdynamic -lpthread -Wl,-Bdynamic -ldl")
 endif()
 INCLUDE(CheckCXXSourceCompiles)
 CHECK_CXX_SOURCE_COMPILES("
-#include <string.h>
 // See comment in bfd-disasm.cpp for why this needs to exist
 #define PACKAGE \"bpftrace-test\"
-#include <bfd.h>
 #include <dis-asm.h>
-int main(void) {
-  bfd *abfd = bfd_openr(NULL, NULL);
 
-  disassembler(bfd_get_arch(abfd),
-               bfd_big_endian(abfd),
-               bfd_get_mach(abfd),
-               abfd);
+int main(void) {
+  init_disassemble_info(NULL, NULL, NULL, NULL);
   return 0;
-}" LIBBFD_DISASM_FOUR_ARGS_SIGNATURE)
+}
+" LIBBFD_INIT_DISASM_INFO_FOUR_ARGS_SIGNATURE)
 SET(CMAKE_REQUIRED_LIBRARIES)
 endif()

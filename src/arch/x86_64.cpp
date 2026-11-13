@@ -1,102 +1,109 @@
+#include <unordered_map>
+
 #include "arch.h"
 
-#include <algorithm>
-#include <array>
+namespace bpftrace::arch {
 
-// SP + 8 points to the first argument that is passed on the stack
-#define ARG0_STACK 8
-
-namespace bpftrace {
-namespace arch {
-
-// clang-format off
-static std::array<std::string, 27> registers = {
-  "r15",
-  "r14",
-  "r13",
-  "r12",
-  "bp",
-  "bx",
-  "r11",
-  "r10",
-  "r9",
-  "r8",
-  "ax",
-  "cx",
-  "dx",
-  "si",
-  "di",
-  "orig_ax",
-  "ip",
-  "cs",
-  "flags",
-  "sp",
-  "ss",
-};
-
-static std::array<std::string, 6> arg_registers = {
-  "di",
-  "si",
-  "dx",
-  "cx",
-  "r8",
-  "r9",
-};
-// clang-format on
-
-int offset(std::string reg_name)
+template <>
+std::string Arch<Machine::X86_64>::asm_arch()
 {
-  auto it = find(registers.begin(), registers.end(), reg_name);
-  if (it == registers.end())
-    return -1;
-  return distance(registers.begin(), it);
+  return "x86";
 }
 
-int max_arg()
+template <>
+size_t Arch<Machine::X86_64>::kernel_ptr_width()
 {
-  return arg_registers.size() - 1;
+  return 64;
 }
 
-int arg_offset(int arg_num)
+template <>
+const std::vector<std::string>& Arch<Machine::X86_64>::c_defs()
 {
-  return offset(arg_registers.at(arg_num));
-}
-
-int ret_offset()
-{
-  return offset("ax");
-}
-
-int pc_offset()
-{
-  return offset("ip");
-}
-
-int sp_offset()
-{
-  return offset("sp");
-}
-
-int arg_stack_offset()
-{
-  return ARG0_STACK / 8;
-}
-
-std::string name()
-{
-  return std::string("x86_64");
-}
-
-std::vector<std::string> invalid_watchpoint_modes()
-{
-  // See intel developer manual, Volume 3, section 17.2.4
-  return std::vector<std::string>{
-    "r",
-    "rx",
-    "wx",
-    "rwx",
+  static std::vector<std::string> defs = {
+    "__TARGET_ARCH_x86",
   };
+  return defs;
 }
 
-} // namespace arch
-} // namespace bpftrace
+template <>
+std::optional<size_t> Arch<Machine::X86_64>::register_to_pt_regs_offset(
+    const std::string& name)
+{
+  static const std::unordered_map<std::string, size_t> register_offsets = {
+    { "r15", 0 },  { "r14", 8 },  { "r13", 16 }, { "r12", 24 },
+    { "bp", 32 },  { "bx", 40 },  { "r11", 48 }, { "r10", 56 },
+    { "r9", 64 },  { "r8", 72 },  { "ax", 80 },  { "cx", 88 },
+    { "dx", 96 },  { "si", 104 }, { "di", 112 }, { "orig_rax", 120 },
+    { "ip", 128 }, { "pc", 128 }, { "cs", 136 }, { "flags", 144 },
+    { "sp", 152 }, { "ss", 160 },
+  };
+  auto it = register_offsets.find(name);
+  if (it != register_offsets.end()) {
+    return it->second;
+  }
+  return std::nullopt;
+}
+
+template <>
+std::optional<std::string> Arch<Machine::X86_64>::register_to_pt_regs_expr(
+    const std::string& name)
+{
+  // All the registers in x86-64 are defined against the existing pt_regs
+  // struct, and there are no aliases. In the future, we could define aliases
+  // like the `rXX` variants as opposed to `ax`, `bx`, etc. or we could add
+  // aliases like `fp` for `bp`.
+  auto offset = register_to_pt_regs_offset(name);
+  if (!offset) {
+    return std::nullopt;
+  }
+  return name;
+}
+
+template <>
+const std::vector<std::string>& Arch<Machine::X86_64>::arguments()
+{
+  static std::vector<std::string> args = {
+    "di", "si", "dx", "cx", "r8", "r9",
+  };
+  return args;
+}
+
+template <>
+size_t Arch<Machine::X86_64>::argument_stack_offset()
+{
+  // The return address is pushed on the frame, so we need to reach up
+  // the stack further to find the first argument.
+  return 8;
+}
+
+template <>
+std::string Arch<Machine::X86_64>::return_value()
+{
+  return "ax";
+}
+
+template <>
+std::string Arch<Machine::X86_64>::pc_value()
+{
+  return "ip";
+}
+
+template <>
+std::string Arch<Machine::X86_64>::sp_value()
+{
+  return "sp";
+}
+
+template <>
+const std::unordered_set<std::string>& Arch<X86_64>::watchpoint_modes()
+{
+  // See intel developer manual, Volume 3, section 17.2.4.
+  static std::unordered_set<std::string> valid_modes = {
+    "rw",
+    "w",
+    "x",
+  };
+  return valid_modes;
+}
+
+} // namespace bpftrace::arch

@@ -1,24 +1,21 @@
 #pragma once
-#include "bpftrace.h"
 
-namespace bpftrace {
-namespace ast {
+#include "ast/ast.h"
+#include "types.h"
+
+namespace bpftrace::ast {
 
 inline bool needMemcpy(const SizedType &stype)
 {
-  return stype.IsAggregate() || stype.IsTimestampTy();
+  return stype.IsAggregate() || stype.IsTimestampTy() || stype.IsCgroupPathTy();
 }
 
-inline bool shouldBeOnStackAlready(const SizedType &type)
-{
-  return type.IsStringTy() || type.IsBufferTy() || type.IsInetTy() ||
-         type.IsUsymTy() || type.IsTupleTy() || type.IsTimestampTy() ||
-         type.IsMacAddressTy();
-}
 inline AddrSpace find_addrspace_stack(const SizedType &ty)
 {
-  return (shouldBeOnStackAlready(ty)) ? AddrSpace::kernel : ty.GetAS();
+  return ty.IsCtxAccess() ? AddrSpace::kernel : ty.GetAS();
 }
 
-} // namespace ast
-} // namespace bpftrace
+// This applies to both map keys and map values
+bool needMapAllocation(const SizedType &src, const SizedType &dst);
+
+} // namespace bpftrace::ast

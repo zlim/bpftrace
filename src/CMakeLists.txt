@@ -2,202 +2,240 @@ if(HAVE_BFD_DISASM)
   set(BFD_DISASM_SRC bfd-disasm.cpp)
 endif()
 
-if(BUILD_FUZZ)
-  message(STATUS "Build for fuzzing")
-  set(MAIN_SRC fuzz_main.cpp)
-  set(BPFTRACE bpftrace_fuzz)
-else()
-  set(MAIN_SRC main.cpp)
-  set(BPFTRACE bpftrace)
-endif()
+# These add -fsanitize=... to all below compiler invocations, including
+# subdirectories.
+add_compile_options($<$<BOOL:${BUILD_ASAN}>:-fsanitize=address>)
+add_compile_options($<$<BOOL:${BUILD_UBSAN}>:-fsanitize=undefined>)
 
-add_executable(${BPFTRACE}
+add_library(required_resources required_resources.cpp)
+
+add_library(compiler_core STATIC
+  bpf_iters.cpp
+  functions.cpp
+  struct.cpp
+  types.cpp
+)
+
+add_library(runtime STATIC
+  async_action.cpp
   attached_probe.cpp
   bpffeature.cpp
   bpftrace.cpp
+  bpfbytecode.cpp
+  bpfmap.cpp
+  bpfprogram.cpp
   btf.cpp
-  child.cpp
-  clang_parser.cpp
+  config.cpp
   disasm.cpp
-  driver.cpp
-  fake_map.cpp
-  lockdown.cpp
+  dwarf_parser.cpp
+  format_string.cpp
+  globalvars.cpp
   log.cpp
-  map.cpp
-  mapkey.cpp
-  output.cpp
   probe_matcher.cpp
-  procmon.cpp
-  printf.cpp
-  resolve_cgroupid.cpp
-  signal.cpp
-  struct.cpp
-  tracepoint_format_parser.cpp
-  types.cpp
-  usdt.cpp
-  utils.cpp
+  probe_types.cpp
+  run_bpftrace.cpp
+  pcap_writer.cpp
+  types_format.cpp
+  ksyms.cpp
+  usyms.cpp
+  dwarf/dwunwind.cpp
+  dwarf/dwunwind_loader.cpp
+  dwarf/dwunwind_table.cpp
   ${BFD_DISASM_SRC}
-  ${MAIN_SRC}
 )
 
-if (BUILD_FUZZ)
-  target_compile_options(${BPFTRACE} PUBLIC "-DFUZZ")
+add_library(libbpftrace STATIC
+  build_info.cpp
+  lockdown.cpp
+  parser.cpp
+)
+# So it's not "liblibbpftrace"
+set_target_properties(libbpftrace PROPERTIES PREFIX "")
 
-  if(FUZZ_TARGET STREQUAL "semantic")
-      message(STATUS "Fuzzing seantic analyzer")
-      target_compile_options(${BPFTRACE} PUBLIC -DTEST_SEMANTIC)
-  elseif(FUZZ_TARGET STREQUAL "codegen")
-      message(STATUS "Fuzzing codegen")
-  else()
-      message(FATAL_ERROR "Unsupported FUZZ_TARGET")
-  endif()
+add_executable(bpftrace
+  main.cpp
+  benchmark.cpp
+)
 
-  if (USE_LIBFUZZER)
-      if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-          message(FATAL_ERROR "Use Clang for libfuzzer")
-      endif()
-      target_compile_options(${BPFTRACE} PUBLIC "-DLIBFUZZER")
-      message(STATUS "Use libfuzzer")
-  endif()
+# TODO: Honor `STATIC_LINKING` properly.
+if(LIBBLAZESYM_FOUND)
+  target_link_libraries(runtime ${LIBBLAZESYM_LIBRARIES})
 endif()
 
-if(HAVE_NAME_TO_HANDLE_AT)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_NAME_TO_HANDLE_AT=1)
-endif(HAVE_NAME_TO_HANDLE_AT)
-if(HAVE_BCC_PROG_LOAD)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_BCC_PROG_LOAD)
-endif(HAVE_BCC_PROG_LOAD)
-if(HAVE_BCC_CREATE_MAP)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_BCC_CREATE_MAP)
-endif(HAVE_BCC_CREATE_MAP)
-if(HAVE_BCC_ELF_FOREACH_SYM)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_BCC_ELF_FOREACH_SYM)
-endif(HAVE_BCC_ELF_FOREACH_SYM)
-if(HAVE_BCC_USDT_ADDSEM)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_BCC_USDT_ADDSEM)
-endif(HAVE_BCC_USDT_ADDSEM)
-if (LIBBPF_BTF_DUMP_FOUND)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_LIBBPF_BTF_DUMP)
-  target_include_directories(${BPFTRACE} PUBLIC ${LIBBPF_INCLUDE_DIRS})
-  target_link_libraries(${BPFTRACE} ${LIBBPF_LIBRARIES})
-  if (HAVE_LIBBPF_BTF_DUMP_EMIT_TYPE_DECL)
-    target_compile_definitions(${BPFTRACE} PRIVATE HAVE_LIBBPF_BTF_DUMP_EMIT_TYPE_DECL)
-  endif()
-endif(LIBBPF_BTF_DUMP_FOUND)
-if (LIBBPF_FOUND)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_LIBBPF)
-endif(LIBBPF_FOUND)
+install(TARGETS bpftrace DESTINATION ${CMAKE_INSTALL_BINDIR})
+target_compile_definitions(bpftrace PRIVATE ${BPFTRACE_FLAGS})
 
-if (HAVE_LIBBPF_MAP_BATCH)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_LIBBPF_MAP_BATCH)
-endif()
+# TODO(Jiawei Zhao): this conditional can be removed when we no longer use bcc.
+if(STATIC_LINKING)
+  target_link_libraries(bpftrace libbpftrace)
+else()
+  target_link_libraries(bpftrace libbpftrace ${LIBBPF_LIBRARIES})
+endif(STATIC_LINKING)
 
-if (HAVE_BCC_KFUNC)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_BCC_KFUNC)
-endif(HAVE_BCC_KFUNC)
+# compile definitions
+
+# This is run on every build to ensure the version string is always up-to-date
+add_custom_target(version_h
+  COMMAND ${CMAKE_COMMAND}
+    -DVERSION_H_IN=${CMAKE_CURRENT_SOURCE_DIR}/version.h.in
+    -DVERSION_H=${CMAKE_BINARY_DIR}/version.h
+    -Dbpftrace_VERSION_MAJOR=${bpftrace_VERSION_MAJOR}
+    -Dbpftrace_VERSION_MINOR=${bpftrace_VERSION_MINOR}
+    -Dbpftrace_VERSION_PATCH=${bpftrace_VERSION_PATCH}
+    -Dbpftrace_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+    -P ${CMAKE_SOURCE_DIR}/cmake/Version.cmake
+)
+add_dependencies(runtime version_h)
+add_dependencies(bpftrace version_h)
+add_dependencies(libbpftrace version_h)
+
+target_compile_definitions(required_resources PRIVATE ${BPFTRACE_FLAGS})
+target_compile_definitions(runtime PRIVATE ${BPFTRACE_FLAGS})
+target_include_directories(libbpftrace PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_definitions(libbpftrace PRIVATE ${BPFTRACE_FLAGS})
+
+# Linking
+target_link_options(bpftrace BEFORE PRIVATE
+  $<$<BOOL:${STATIC_LINKING}>:-static-libgcc>
+  $<$<BOOL:${STATIC_LINKING}>:-static-libstdc++>
+)
+
+
+target_link_libraries(runtime debugfs output symbols tracefs util)
+target_link_libraries(runtime ${LIBBPF_LIBRARIES} ${ZLIB_LIBRARIES})
+target_link_libraries(libbpftrace "-Wl,--start-group" runtime symbols aot ast arch util cxxdemangler_llvm "-Wl,--end-group")
+
+if(LIBPCAP_FOUND)
+  target_link_libraries(libbpftrace ${LIBPCAP_LIBRARIES})
+endif(LIBPCAP_FOUND)
+
 if(HAVE_BFD_DISASM)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_BFD_DISASM)
-  if(LIBBFD_DISASM_FOUR_ARGS_SIGNATURE)
-    target_compile_definitions(${BPFTRACE} PRIVATE LIBBFD_DISASM_FOUR_ARGS_SIGNATURE)
-  endif(LIBBFD_DISASM_FOUR_ARGS_SIGNATURE)
-  if(STATIC_LINKING)
+  if(STATIC_LINKING OR LIBBFD_STATIC)
     add_library(LIBBFD STATIC IMPORTED)
     set_property(TARGET LIBBFD PROPERTY IMPORTED_LOCATION ${LIBBFD_LIBRARIES})
-    target_link_libraries(${BPFTRACE} LIBBFD)
+    target_link_libraries(runtime LIBBFD)
     add_library(LIBOPCODES STATIC IMPORTED)
     set_property(TARGET LIBOPCODES PROPERTY IMPORTED_LOCATION ${LIBOPCODES_LIBRARIES})
-    target_link_libraries(${BPFTRACE} LIBOPCODES)
+    target_link_libraries(runtime LIBOPCODES)
     add_library(LIBIBERTY STATIC IMPORTED)
     set_property(TARGET LIBIBERTY PROPERTY IMPORTED_LOCATION ${LIBIBERTY_LIBRARIES})
-    target_link_libraries(${BPFTRACE} LIBIBERTY)
+    target_link_libraries(runtime LIBIBERTY)
+
+    add_library(LIBZSTD STATIC IMPORTED)
+    if (LIBZSTD_LIBRARIES)
+      set_property(TARGET LIBZSTD PROPERTY IMPORTED_LOCATION ${LIBZSTD_LIBRARIES})
+      target_link_libraries(runtime LIBZSTD)
+    endif(LIBZSTD_LIBRARIES)
+
+    add_library(LIBSFRAME STATIC IMPORTED)
+    if (LIBSFRAME_LIBRARIES)
+      set_property(TARGET LIBSFRAME PROPERTY IMPORTED_LOCATION ${LIBSFRAME_LIBRARIES})
+      target_link_libraries(runtime LIBSFRAME)
+    endif(LIBSFRAME_LIBRARIES)
   else()
-    target_link_libraries(${BPFTRACE} ${LIBBFD_LIBRARIES})
-    target_link_libraries(${BPFTRACE} ${LIBOPCODES_LIBRARIES})
-  endif(STATIC_LINKING)
+    target_link_libraries(runtime ${LIBBFD_LIBRARIES})
+    target_link_libraries(runtime ${LIBOPCODES_LIBRARIES})
+    if (LIBZSTD_LIBRARIES)
+      target_link_libraries(runtime ${LIBZSTD_LIBRARIES})
+    endif(LIBZSTD_LIBRARIES)
+  endif(STATIC_LINKING OR LIBBFD_STATIC)
 endif(HAVE_BFD_DISASM)
-if(LIBBCC_ATTACH_KPROBE_SIX_ARGS_SIGNATURE)
-  target_compile_definitions(${BPFTRACE} PRIVATE LIBBCC_ATTACH_KPROBE_SIX_ARGS_SIGNATURE)
-endif(LIBBCC_ATTACH_KPROBE_SIX_ARGS_SIGNATURE)
-if(LIBBCC_ATTACH_UPROBE_SEVEN_ARGS_SIGNATURE)
-  target_compile_definitions(${BPFTRACE} PRIVATE LIBBCC_ATTACH_UPROBE_SEVEN_ARGS_SIGNATURE)
-endif(LIBBCC_ATTACH_UPROBE_SEVEN_ARGS_SIGNATURE)
 
-if (ALLOW_UNSAFE_PROBE)
-  target_compile_definitions(${BPFTRACE} PRIVATE HAVE_UNSAFE_PROBE)
-endif(ALLOW_UNSAFE_PROBE)
+# Link to bcc libraries (without LLVM) if possible
+if(LIBBCC_BPF_CONTAINS_RUNTIME)
+  target_link_libraries(runtime ${LIBBCC_BPF_LIBRARIES})
+else()
+  target_link_libraries(runtime ${LIBBCC_LIBRARIES})
+endif()
 
-target_link_libraries(${BPFTRACE} arch ast parser resources)
-
-target_link_libraries(${BPFTRACE} ${LIBBCC_LIBRARIES})
 if(STATIC_LINKING)
   # These are not part of the static libbcc so have to be added separate
-  target_link_libraries(${BPFTRACE} ${LIBBCC_BPF_LIBRARY_STATIC})
-  target_link_libraries(${BPFTRACE} ${LIBBPF_LIBRARIES})
-  target_link_libraries(${BPFTRACE} ${LIBBCC_LOADER_LIBRARY_STATIC})
+  target_link_libraries(runtime ${LIBBCC_BPF_LIBRARIES})
+  target_link_libraries(runtime ${LIBBPF_LIBRARIES})
+  target_link_libraries(runtime ${LIBBCC_LOADER_LIBRARY_STATIC})
+
+  find_package(LibLzma)
+  add_library(LIBLZMA STATIC IMPORTED)
+  set_property(TARGET LIBLZMA PROPERTY IMPORTED_LOCATION ${LIBLZMA_LIBRARIES})
+  target_link_libraries(runtime LIBLZMA)
 
   add_library(LIBELF STATIC IMPORTED)
   set_property(TARGET LIBELF PROPERTY IMPORTED_LOCATION ${LIBELF_LIBRARIES})
-  target_link_libraries(${BPFTRACE} LIBELF)
-
-  if(NOT STATIC_LIBC)
-    set_target_properties(${BPFTRACE} PROPERTIES LINK_FLAGS "${EMBEDDED_LINK_FLAGS}")
-  endif()
+  target_link_libraries(runtime LIBELF)
 else()
-  target_link_libraries(${BPFTRACE} ${LIBELF_LIBRARIES})
+  target_link_libraries(runtime ${LIBELF_LIBRARIES})
 endif(STATIC_LINKING)
 
-# Support for std::filesystem
-# GCC version <9 and Clang (all versions) require -lstdc++fs
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "9")
-  target_link_libraries(${BPFTRACE} "stdc++fs")
-endif()
+if (LIBDW_FOUND)
+  if(STATIC_LINKING)
+    find_package(LibBz2)
+    find_package(LibEbl)
 
-if (BUILD_ASAN)
-  if(${CMAKE_VERSION} VERSION_LESS "3.13.0")
-    # target_link_options is supported in CMake 3.13 and newer
-    message("Please use CMake 3.13 or newer to enable ASAN")
-  endif()
-  target_compile_options(${BPFTRACE} PUBLIC "-fsanitize=address")
-  target_link_options(${BPFTRACE} PUBLIC "-fsanitize=address")
-endif()
+    add_library(LIBBZ2 STATIC IMPORTED)
+    set_property(TARGET LIBBZ2 PROPERTY IMPORTED_LOCATION ${LIBBZ2_LIBRARIES})
 
-if (USE_LIBFUZZER)
-  if(${CMAKE_VERSION} VERSION_LESS "3.13.0")
-    message("Please use CMake 3.13 or newer to use libfuzzer")
-  endif()
-  if (BUILD_ASAN)
-    target_compile_options(${BPFTRACE} PUBLIC "-fsanitize=fuzzer,address")
-    target_link_options(${BPFTRACE} PUBLIC "-fsanitize=fuzzer")
+    add_library(LIBDW STATIC IMPORTED)
+    set_property(TARGET LIBDW PROPERTY IMPORTED_LOCATION ${LIBDW_LIBRARIES})
+
+    set(LIBDW_LIBS LIBBZ2 LIBELF LIBLZMA)
+
+    # Some libc implementations, such as musl, provide fts(3) in a separate
+    # library. libdwfl's kernel module helpers use these symbols, so propagate
+    # the optional static library when it is available.
+    find_library(LIBFTS_LIBRARIES NAMES fts)
+    if (LIBFTS_LIBRARIES)
+      add_library(LIBFTS STATIC IMPORTED)
+      set_property(TARGET LIBFTS PROPERTY IMPORTED_LOCATION ${LIBFTS_LIBRARIES})
+      set(LIBDW_LIBS ${LIBDW_LIBS} LIBFTS)
+    endif()
+
+    if (${LIBEBL_FOUND})
+      # libebl is not necessary on some systems (e.g. Alpine)
+      add_library(LIBEBL STATIC IMPORTED)
+      set_property(TARGET LIBEBL PROPERTY IMPORTED_LOCATION ${LIBEBL_LIBRARIES})
+      set(LIBDW_LIBS ${LIBDW_LIBS} LIBEBL)
+    endif()
+
+    target_link_libraries(LIBDW INTERFACE ${LIBDW_LIBS})
+
+    target_link_libraries(runtime LIBDW)
   else()
-      target_compile_options(${BPFTRACE} PUBLIC "-fsanitize=fuzzer")
-      target_link_options(${BPFTRACE} PUBLIC "-fsanitize=fuzzer,address")
+    target_link_libraries(runtime ${LIBDW_LIBRARIES})
   endif()
 endif()
 
-install(TARGETS ${BPFTRACE} DESTINATION ${CMAKE_INSTALL_BINDIR})
+# We do not use add_link_options here since it doesn't work for some reason.
+# Instead, just pass -fsanitize=... to the linker when linking the bpftrace
+# target.
+target_link_options(bpftrace PUBLIC $<$<BOOL:${BUILD_ASAN}>:-fsanitize=address>)
+target_link_options(bpftrace PUBLIC $<$<BOOL:${BUILD_UBSAN}>:-fsanitize=undefined>)
 
-set(KERNEL_HEADERS_DIR "" CACHE PATH "Hard-code kernel headers directory")
-if (KERNEL_HEADERS_DIR)
-  MESSAGE(STATUS "Using KERNEL_HEADERS_DIR=${KERNEL_HEADERS_DIR}")
-  target_compile_definitions(${BPFTRACE} PUBLIC KERNEL_HEADERS_DIR="${KERNEL_HEADERS_DIR}")
+if (STATIC_LINKING)
+  if(ANDROID)
+    target_link_libraries(libbpftrace "-Wl,-Bdynamic" "-ldl" "-lm" "-lz")
+    target_link_libraries(runtime "-Wl,-Bdynamic" "-ldl" "-lm" "-lz")
+  else()
+    target_link_libraries(libbpftrace "-Wl,-Bdynamic" "-lrt" "-lpthread" "-ldl" "-lm")
+    target_link_libraries(libbpftrace "-Wl,-Bstatic" "-lz")
+    target_link_libraries(runtime "-Wl,-Bdynamic" "-lrt" "-lpthread" "-ldl" "-lm")
+    target_link_libraries(runtime "-Wl,-Bstatic" "-lz")
+  endif()
 endif()
 
-execute_process(
-  COMMAND git describe --abbrev=4 --dirty --tags
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE BPFTRACE_VERSION
-  ERROR_VARIABLE GIT_DESCRIBE_ERROR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  RESULT_VARIABLE retcode
-)
-
-# If the build is not done from a git repo, get the version information from
-# the version variables in main CMakeLists.txt
-if(NOT "${retcode}" STREQUAL "0")
-  set(BPFTRACE_VERSION "v${bpftrace_VERSION_MAJOR}.${bpftrace_VERSION_MINOR}.${bpftrace_VERSION_PATCH}")
+if (ENABLE_SYSTEMD)
+  target_link_libraries(runtime PkgConfig::libsystemd)
 endif()
 
-add_definitions("-DBPFTRACE_VERSION=\"${BPFTRACE_VERSION}\"")
-
-unset(MAIN_SRC)
 unset(BPFTRACE)
+
+add_subdirectory(aot)
+add_subdirectory(arch)
+add_subdirectory(ast)
+add_subdirectory(btf)
+add_subdirectory(cxxdemangler)
+add_subdirectory(debugfs)
+add_subdirectory(output)
+add_subdirectory(stdlib)
+add_subdirectory(symbols)
+add_subdirectory(tracefs)
+add_subdirectory(util)

@@ -8,158 +8,1437 @@ and this project adheres to
 
 ## Unreleased
 
+#### Breaking Changes
+#### Added
+- Allow access to individual fields (.count, .total, .avg) of `stats_t` created by `stats()`
+  - [#5227](https://github.com/bpftrace/bpftrace/issues/5227)
+- stdlib: Add `abs_path` and `cwd`.
+  - [#5276](https://github.com/bpftrace/bpftrace/pull/5276)
+- Add `kprobe` support for source location attachpoints.
+  - [#5308](https://github.com/bpftrace/bpftrace/pull/5308)
+- stdlib: Add the compile-time `arch` builtin.
+  - [#4018](https://github.com/bpftrace/bpftrace/issues/4018)
+- Add `kfunc::name(...)` syntax for calling kernel functions (kfuncs) directly.
+  - [#5360](https://github.com/bpftrace/bpftrace/pull/5360)
+- Add `helper::name(...)` syntax for calling BPF helpers directly.
+  - [#5435](https://github.com/bpftrace/bpftrace/pull/5435)
+- Allow `delete(@map)` on maps with explicit keys to synchronously delete all keys/values
+  - [#5382](https://github.com/bpftrace/bpftrace/pull/5382)
+- Add open-coded iterators to `for` loops: `iter_task`, `iter_threads`,
+  `iter_task_threads` and `iter_task_vma`.
+  - [#5386](https://github.com/bpftrace/bpftrace/pull/5386)
+- `test` probes now report the source line of a failing (non-zero) return
+  - [#5406](https://github.com/bpftrace/bpftrace/pull/5406)
+- Allow listing source-location kprobes that map to an address.
+  - [#5429](https://github.com/bpftrace/bpftrace/pull/5429)
+- Treat tracepoint `args` as a Record, which allows it to be printed and stored into maps and scratch variables.
+  - [#5347](https://github.com/bpftrace/bpftrace/pull/5347)
+#### Changed
+- `void *` converts to and from any pointer, without a cast, when calling an
+  imported C function or kfunc.
+  - [#5426](https://github.com/bpftrace/bpftrace/pull/5426)
+- Source location attachpoints resolve to an address the DWARF line table marks
+  as a statement start, which can move where kprobes and uprobes attach.
+  - [#5419](https://github.com/bpftrace/bpftrace/pull/5419)
+#### Deprecated
+#### Removed
+#### Fixed
+- Resolve source location probes to the compilation unit built from the file, not a unit that includes it.
+  - [#5415](https://github.com/bpftrace/bpftrace/pull/5415)
+#### Security
+#### Docs
+#### Tools
+- gethostlatency.bt: gethostbyaddr: Add IPv6 support, fix IP address printing
+  - [#5414](https://github.com/bpftrace/bpftrace/pull/5414)
+
+
+## [0.27.1] 2026-10-24
+
+#### Changed
+- Structs and arrays are copied for scratch variable assignment
+  - [#5369](https://github.com/bpftrace/bpftrace/pull/5369)
+#### Fixed
+- Fix bitfield access on structs stored in maps.
+  - [#5366](https://github.com/bpftrace/bpftrace/pull/5366)
+- Fix field access on structs inside tuples, records and map keys.
+  - [#5367](https://github.com/bpftrace/bpftrace/pull/5367)
+- Resolve uprobe argument names inherited through DWARF abstract origins.
+  - [#5344](https://github.com/bpftrace/bpftrace/issues/5344)
+- Fix crash printing a `hist()` map when the `print()` divisor scales every
+  bucket to zero.
+  - [#5346](https://github.com/bpftrace/bpftrace/pull/5346)
+- Report the BPF program that actually failed verification when using `-v` or `-d verifier`.
+  - [#5388](https://github.com/bpftrace/bpftrace/issues/5388)
+- Fix scalar access for copied structs
+  - [#5363](https://github.com/bpftrace/bpftrace/pull/5363)
+- Fix invalid BPF object with LLVM 23 when using strings with a large `max_strlen`
+  - [#5372](https://github.com/bpftrace/bpftrace/pull/5372)
+- Print compile-time warnings to stderr instead of stdout so they don't corrupt JSON output
+  - [#5376](https://github.com/bpftrace/bpftrace/pull/5376)
+- Align scratch variables to 8 bytes when they don't fit on the stack.
+  - [#5377](https://github.com/bpftrace/bpftrace/pull/5377)
+- Zero `let` declarations without an assignment on every loop iteration.
+  - [#5399](https://github.com/bpftrace/bpftrace/pull/5399)
+
+## [0.27.0] 2026-09-10
+
+#### Added
+- stdlib: add `str_concat()`.
+  - [#5265](https://github.com/bpftrace/bpftrace/pull/5265)
+- Add reg("pc") as an alias for the instruction pointer
+  - [#5272](https://github.com/bpftrace/bpftrace/pull/5272)
+- Publish arm64/aarch64 release artifacts alongside x86_64.
+  - [#5213](https://github.com/bpftrace/bpftrace/pull/5213)
+- Add support for type expression substitution for macros
+  - [#5234](https://github.com/bpftrace/bpftrace/pull/5234)
+- stdlib: add `container_of` mirroring the libbpf macro
+  - [#5236](https://github.com/bpftrace/bpftrace/pull/5236)
+- stdlib: add `config` to read bpftrace configuration variables
+ -  [#5241](https://github.com/bpftrace/bpftrace/pull/5241)
+#### Changed
+- List structure with module name in verbose mode
+  - [#5212](https://github.com/bpftrace/bpftrace/pull/5212)
+- Warn if casting to the exact same type
+  - [#5208](https://github.com/bpftrace/bpftrace/pull/5208)
+- Release assets are now suffixed with the architecture
+  - [#5213](https://github.com/bpftrace/bpftrace/pull/5213)
+#### Fixed
+- Fix session probes support for kernel version 7.0
+  - [#5294](https://github.com/bpftrace/bpftrace/pull/5294)
+- Propagate address space for sized variable declarations
+  - [#5294](https://github.com/bpftrace/bpftrace/pull/5294)
+- Ensure that string allocation and usage are consistent in size.
+  - [#5279](https://github.com/bpftrace/bpftrace/pull/5279)
+- Fix crash caused by debug locations leaking between generated functions
+  - [#5278](https://github.com/bpftrace/bpftrace/pull/5278)
+- Fix address space handling for map and variable addresses
+  - [#5272](https://github.com/bpftrace/bpftrace/pull/5272)
+- Fix uaddr() to preserve pointer type for correct dereference size
+  - [#5272](https://github.com/bpftrace/bpftrace/pull/5272)
+- Fix fentry/fexit argument decoding
+  - [#5272](https://github.com/bpftrace/bpftrace/pull/5272)
+- Set user address space for USDT arguments
+  - [#5272](https://github.com/bpftrace/bpftrace/pull/5272)
+- Fix strftime() on big endian systems
+  - [#5272](https://github.com/bpftrace/bpftrace/pull/5272)
+- Fix for loop variable type mismatch
+  - [#5272](https://github.com/bpftrace/bpftrace/pull/5272)
+- Print zero values for empty scalar maps
+  - [#5239](https://github.com/bpftrace/bpftrace/pull/5239)
+- Prefer vendored libbpf BPF UAPI headers over system ones
+  - [#5288](https://github.com/bpftrace/bpftrace/pull/5288)
+- Fix large string allocations for casts
+  - [#5286](https://github.com/bpftrace/bpftrace/pull/5286)
+- Fix `func` builtin for session probe return/exit branches
+  - [#5302](https://github.com/bpftrace/bpftrace/issues/5302)
+- Fix formatting of MAC address bytes with the high bit set
+  - [#5326](https://github.com/bpftrace/bpftrace/issues/5326)
+- Fix recursive BTF compat types
+  - [#5322](https://github.com/bpftrace/bpftrace/pull/5322)
+
+## [0.26.1] 2026-06-02
+
+#### Fixed
+- Fix reval and argX for session probes
+  - [#5195](https://github.com/bpftrace/bpftrace/pull/5195)
+- Fix self probe listing
+  - [#5200](https://github.com/bpftrace/bpftrace/pull/5200)
+- Fix statement probes for some compiler versions
+  - [#5201](https://github.com/bpftrace/bpftrace/pull/5201)
+
+## [0.26.0] 2026-05-26
+
+#### Breaking Changes
+- stdlib: Change `pcomm` to an alias of task.real_parent.comm instead of task.group_leader.comm.
+  - [#5132](https://github.com/bpftrace/bpftrace/pull/5132)
+- Subtraction and decrement ops now produce an int64 instead of a uint64.
+  - [#5138](https://github.com/bpftrace/bpftrace/pull/5138)
+#### Added
+- User defined C structs support using `__attribute__`s after the closing curly brace.
+  - [#5153](https://github.com/bpftrace/bpftrace/pull/5153)
+- stdlib: add `leader_{tid,comm}` to retrieve the thread group leader.
+  - [#5132](https://github.com/bpftrace/bpftrace/pull/5132)
+- stdlib: add signal_name().
+  - [#5098](https://github.com/bpftrace/bpftrace/pull/5098)
+- Add DWARF-based user-space stack unwinding via `dw_ustack()` for x86_64 (requires LLVM >= 21).
+  - [#4964](https://github.com/bpftrace/bpftrace/pull/4964)
+- Extend support for DWARF formats
+  - [#5095](https://github.com/bpftrace/bpftrace/pull/5095)
+- Ternary operator supports an empty second operand.
+  - [#5077](https://github.com/bpftrace/bpftrace/pull/5077)
+- Add `uprobe` support for source location attach points.
+  - [#4867](https://github.com/bpftrace/bpftrace/pull/4867)
+- Add printf specifier `%gr` to print GFP flags in human readable format
+  - [#4832](https://github.com/bpftrace/bpftrace/issues/4832)
+- Add `write_user(dst, src, len)` function to write to user-space memory using `bpf_probe_write_user` (requires `--unsafe`)
+  - [#3742](https://github.com/bpftrace/bpftrace/issues/3742)
+- Add `is_err` stdlib macro for detecting ERR_PTR return values
+  - [#5086](https://github.com/bpftrace/bpftrace/pull/5086)
+#### Changed
+- Improved disambiguation for cast and typeof-style expressions
+  - [#5092](https://github.com/bpftrace/bpftrace/pull/5092)
+- The default type for positive integer literals is now `int8`
+  - [#5138](https://github.com/bpftrace/bpftrace/pull/5138)
+- Warn instead of error when there is an integer sign mismatch, except for integer literals that are out of range for the destination type
+  - [#5148](https://github.com/bpftrace/bpftrace/pull/5148)
+- Stabilize root imports (remove 'unstable_import' flag)
+  - [#5184](https://github.com/bpftrace/bpftrace/pull/5184)
+- Stabilize address-of operator `&` (remove 'unstable_addr' flag)
+  - [#5185](https://github.com/bpftrace/bpftrace/pull/5185)
+#### Fixed
+- Silence warning hints when warnings are disabled (`--no-warnings`)
+  - [#5151](https://github.com/bpftrace/bpftrace/pull/5151)
+- Fix kfunc/fentry probe listing incorrectly showing a `retval` parameter
+  - [#5147](https://github.com/bpftrace/bpftrace/pull/5147)
+- stdlib: Fixed strerror() and signal_name() failing BPF verification
+  - [#5145](https://github.com/bpftrace/bpftrace/pull/5145)
+- Fix boolean to integer cast on big-endian architectures
+  - [#5143](https://github.com/bpftrace/bpftrace/pull/5143)
+- Fix per-cpu map aggregation on big-endian architectures
+  - [#5130](https://github.com/bpftrace/bpftrace/pull/5130)
+- Add bitfield support when printing full structure using "print()"
+  - [#2801](https://github.com/bpftrace/bpftrace/issues/2801)
+- Fix subtraction and decrement ops not producing the correct type
+  - [#5138](https://github.com/bpftrace/bpftrace/pull/5138)
+- Fix for-loop variable scope causing type merging across loops
+  - [#5157](https://github.com/bpftrace/bpftrace/pull/5157)
+- Fix verbose listing of some kernel struct types
+  - [#5169](https://github.com/bpftrace/bpftrace/pull/5169)
+- Enable session probes for kprobes with exact function names (not only wildcards)
+  - [#5104](https://github.com/bpftrace/bpftrace/pull/5104)
+- Fix un-aligned map key access for hist/lhist/tseries map types
+  - [#5181](https://github.com/bpftrace/bpftrace/pull/5181)
+#### Tools
+- naptime.bt: Filter out failed calls and add clock_nanosleep support
+  - [#5117](https://github.com/bpftrace/bpftrace/pull/5117)
+
+## [0.25.1] 2026-03-25
+
+#### Fixed
+- Fix crash for invalid if expressions
+  - [#5080](https://github.com/bpftrace/bpftrace/pull/5080)
+- Fix crash when scripts have a trailing new line and there are clang warnings
+  - [#5074](https://github.com/bpftrace/bpftrace/pull/5074)
+- Fix casting negative literals to unsigned types
+  - [#5085](https://github.com/bpftrace/bpftrace/pull/5085)
+- Attach watchpoint probes to all threads of a process
+  - [#5088](https://github.com/bpftrace/bpftrace/pull/5088)
+- Fix stdlib `strerror` error caused by exceeding the BPF stack limit.
+  - [#5094](https://github.com/bpftrace/bpftrace/pull/5094)
+
+## [0.25.0] 2026-03-13
+
+#### Breaking Changes
+- `exit()` is no longer allowed inside loops. `return` was always disallowed, and `exit()` implicitly returns, which may result in undefined behavior.
+  - [#4587](https://github.com/bpftrace/bpftrace/pull/4587)
+- Restrict bpftrace script licenses to those that are GPL compatible
+  - [#4677](https://github.com/bpftrace/bpftrace/pull/4677)
+- Remove the deprecated `sarg` builtin
+  - [#4686](https://github.com/bpftrace/bpftrace/pull/4686)
+- Benchmark formats changed slightly, to reflect gbenchmark
+  - [#4753](https://github.com/bpftrace/bpftrace/pull/4753)
+- `args` in tracepoints now requires BTF
+  - [#4864](https://github.com/bpftrace/bpftrace/pull/4864)
+  - [Migration guide](docs/migration_guide.md##args-in-tracepoints-now-requires-btf)
+- Experimental `watchpoint:func+arg` and `asyncwatchpoint:func+arg` attach points are not supported anymore (for now, at least)
+  - [#4890](https://github.com/bpftrace/bpftrace/pull/4890)
+- `BPFTRACE_DEBUG_OUTPUT` is removed, and errors are now propagated via the runtime error path
+  - [#4976](https://github.com/bpftrace/bpftrace/pull/4976)
+#### Added
+- `getopt()` add optional description argument
+  - [#4998](https://github.com/bpftrace/bpftrace/pull/4998)
+- Add `--probe-filter` CLI flag to selectively run probes matching a regex
+  - [#5011](https://github.com/bpftrace/bpftrace/pull/5011)
+- Add `comm()` support for PID parameters.
+  - [#4799](https://github.com/bpftrace/bpftrace/pull/4799)
+- Add `syscall_name()` to convert system call numbers into names.
+  - [#4746](https://github.com/bpftrace/bpftrace/pull/4746)
+- Add `pcomm` to stdlib and `ppid` can be called without arguments.
+  - [#4744](https://github.com/bpftrace/bpftrace/pull/4744)
+- Add support for indexing string types
+  - [#4540](https://github.com/bpftrace/bpftrace/pull/4540)
+- Automatic dereferencing is supported via `.`, now the preferred access operator
+  - [#4673](https://github.com/bpftrace/bpftrace/pull/4673)
+- Add `signal_thread()` to target the current thread
+  - [#4700](https://github.com/bpftrace/bpftrace/pull/4700)
+- Add `probetype` builtin
+  - [#4712](https://github.com/bpftrace/bpftrace/pull/4712)
+- Allow array-style access for tuples
+  - [#4715](https://github.com/bpftrace/bpftrace/pull/4715)
+- Add `test` probes as means to improve runtime test latency
+  - [#4753](https://github.com/bpftrace/bpftrace/pull/4753)
+- Multiple `begin` & `end` probes are now permitted
+  - [#4789](https://github.com/bpftrace/bpftrace/pull/4789)
+- Probes may now be named (reserved for future use)
+  - [#4752](https://github.com/bpftrace/bpftrace/pull/4752)
+- Add support for more vmlinux BTF types as identifiers
+  - [#4853](https://github.com/bpftrace/bpftrace/pull/4853)
+- Add support for `--fmt` mode (automatic formatting)
+  - [#4621](https://github.com/bpftrace/bpftrace/pull/4621)
+- Add `build_id` stack mode for getting build_id and offset
+  - [#4912](https://github.com/bpftrace/bpftrace/pull/4912)
+- Add new Record primitive
+  - [#4947](https://github.com/bpftrace/bpftrace/pull/4947)
+- Add `find` to get map value if it exists
+  - [#4845](https://github.com/bpftrace/bpftrace/pull/4845)
+- Make `cpid` AOT friendly; using `cpid` while lacking a command is no longer a compile error and `has_cpid` has been added
+  - [#4984](https://github.com/bpftrace/bpftrace/pull/4984)
+- Add `--traceable-functions` to allow the user to provide the list of kernel functions that can be probed
+  - [#5014](https://github.com/bpftrace/bpftrace/pull/5014)
+- Add support for address kprobes
+  - [#5041](https://github.com/bpftrace/bpftrace/pull/5041)
+- Allow probing arbitrary files with --unsafe
+  - [#5053](https://github.com/bpftrace/bpftrace/pull/5053)
+- Support probing binaries stored in ZIP archives (e.g. Android APKs)
+  - [#5053](https://github.com/bpftrace/bpftrace/pull/5053)
+#### Changed
+- Add helpers to check if a kfunc exists and is supported for particular probe types.
+  - [#4857](https://github.com/bpftrace/bpftrace/pull/4857)
+- `uaddr` support PIE and dynamic library symbols.
+  - [#4727](https://github.com/bpftrace/bpftrace/pull/4727)
+- Apply `-B` buffering semantics to file outputs.
+  - [#4637](https://github.com/bpftrace/bpftrace/pull/4637)
+- Link against libbpf vendored from a submodule by default
+  - [#4688](https://github.com/bpftrace/bpftrace/pull/4688)
+- Increase RLIMIT_NOFILE on startup as needed
+  - [#4716](https://github.com/bpftrace/bpftrace/pull/4716)
+- Root user check replaced with check for required capabilities
+  (CAP_BPF, CAP_PERFMON, CAP_DAC_READ_SEARCH, CAP_DAC_OVERRIDE)
+  - [#4773](https://github.com/bpftrace/bpftrace/pull/4773)
+- Remove automatic type promotion for integers, making them more flexible
+  - [#4768](https://github.com/bpftrace/bpftrace/pull/4768)
+- Stabilize macros (remove 'unstable_macro' flag)
+  - [#4818](https://github.com/bpftrace/bpftrace/pull/4818)
+- Warn on all discarded expressions
+  - [#4836](https://github.com/bpftrace/bpftrace/pull/4836)
+- Stabilize map declarations (remove 'unstable_map_decl' flag)
+  - [#5005](https://github.com/bpftrace/bpftrace/pull/5005)
+#### Deprecated
+- `while` is now deprecated in favor of range-based for loops
+  - [#4886](https://github.com/bpftrace/bpftrace/pull/4886)
+#### Removed
+- Drop support for LLVM 16
+  - [#4534](https://github.com/bpftrace/bpftrace/pull/4534)
+- Drop support for LLVM 17
+  - [#5067](https://github.com/bpftrace/bpftrace/pull/5067)
+#### Fixed
+- Fix interval probe attachment when CPU 0 is offline
+  - [#4987](https://github.com/bpftrace/bpftrace/pull/4987)
+- Respect `missing_probes` config for bad `args` if the probe will be pruned
+  - [#4915](https://github.com/bpftrace/bpftrace/pull/4915)
+- Improved tuple binop comparison
+  - [#4523](https://github.com/bpftrace/bpftrace/pull/4523)
+- Stack type comparison and compatibility
+  - [#4948](https://github.com/bpftrace/bpftrace/pull/4948)
+- Fix missing lines in stack resolution
+  - [#4953](https://github.com/bpftrace/bpftrace/pull/4953)
+- Fix listing multi-probes error
+  - [#5022](https://github.com/bpftrace/bpftrace/pull/5022)
+- Fix handling of void ptr and function ptr BTF types
+  - [#5042](https://github.com/bpftrace/bpftrace/pull/5042)
+#### Security
+#### Docs
+#### Tools
+- undump.bt: Support dgram packet capture
+  - [#4846](https://github.com/bpftrace/bpftrace/pull/4846)
+- opensnoop.bt: Fix multi-thread race condition of @paths
+  - [#4837](https://github.com/bpftrace/bpftrace/pull/4837)
+- syscount.bt: Fix incorrect map printing
+  - [#4831](https://github.com/bpftrace/bpftrace/pull/4831)
+- opensnoop.bt: support mount points
+  - [#4822](https://github.com/bpftrace/bpftrace/pull/4822)
+- opensnoop.bt: support full file path
+  - [#4601](https://github.com/bpftrace/bpftrace/pull/4601)
+- gethostlatency.bt: add more APIs support
+  - [#4600](https://github.com/bpftrace/bpftrace/pull/4600)
+- oomkill.bt: support memory cgroup
+  - [#4533](https://github.com/bpftrace/bpftrace/pull/4533)
+
+## [0.24.2] 2025-12-12
+
+#### Fixed
+- Fix off-by-one for function argument size comparison
+  - [#4698](https://github.com/bpftrace/bpftrace/pull/4698)
+- Fix resolution of enum-typed tracepoint args
+  - [#4714](https://github.com/bpftrace/bpftrace/pull/4714)
+- Fix block expression handling inside print statements
+  - [#4704](https://github.com/bpftrace/bpftrace/issues/4704)
+- join(): Fix wrong index of GEP that was causing truncation
+  - [#4786](https://github.com/bpftrace/bpftrace/pull/4786)
+- output: prevent crash when printing overflow-only lhist
+  - [#4801](https://github.com/bpftrace/bpftrace/pull/4801)
+- codegen: Fix tid/pid in non-init namespaces
+  - [#4813](https://github.com/bpftrace/bpftrace/issues/4813)
+- Fix segfault in printf ordering
+  - [#4838](https://github.com/bpftrace/bpftrace/pull/4838)
+- Fix language part being overwritten in uprobe attachpoint parser
+  - [#4856](https://github.com/bpftrace/bpftrace/pull/4856)
+- Fix automatic conversion of BTF char arrays to bpftrace strings
+  - [#4871](https://github.com/bpftrace/bpftrace/pull/4871)
+- Fix anonymous struct/unions not resolving correctly from BTF
+  - [#4732](https://github.com/bpftrace/bpftrace/pull/4732)
+- Fix getopt support for unsigned integers
+  - [#4881](https://github.com/bpftrace/bpftrace/pull/4881)
+#### Changed
+- Disallow builtin and type idents as macro parameter names
+  - [#4873](https://github.com/bpftrace/bpftrace/pull/4873)
+
+## [0.24.1] 2025-10-03
+
+#### Fixed
+- Fix missing location.hh build error on Alpine
+  - [#4635](https://github.com/bpftrace/bpftrace/pull/4635)
+- Fix build with gcc-16
+  - [#4614](https://github.com/bpftrace/bpftrace/pull/4614)
+- ast: Avoid undefined behavior in literal folding
+  - [#4649](https://github.com/bpftrace/bpftrace/pull/4649)
+- Fix missing map key buffers for map aggregate functions
+  - [#4670](https://github.com/bpftrace/bpftrace/pull/4670)
+#### Docs
+- Fix docs for PERCPU map types
+  - [#4646](https://github.com/bpftrace/bpftrace/pull/4646)
+
+## [0.24.0] 2025-09-17
+
+#### Breaking Changes
+- Drop majority of DWARF support. Only uprobe argument parsing remains.
+  - [#3921](https://github.com/bpftrace/bpftrace/pull/3921)
+  - [#3950](https://github.com/bpftrace/bpftrace/pull/3950)
+- Removed config option 'symbol_source' - it no longer has any effect
+  - [#3925](https://github.com/bpftrace/bpftrace/pull/3925)
+- Rawtracepoints now require kernel BTF
+  - [#3944](https://github.com/bpftrace/bpftrace/pull/3944)
+- Ustack and kstack symbols are automatically enhanced with debug info if available
+  - [#3999](https://github.com/bpftrace/bpftrace/pull/3999)
+- Error by default if any probe fails to attach
+  - [#4097](https://github.com/bpftrace/bpftrace/pull/4097)
+- Require BPF_MAP_TYPE_RINGBUF to be available
+  - [#3974](https://github.com/bpftrace/bpftrace/pull/3974)
+- Require kernel uprobe ref counting to be available for USDTs with semaphores
+  - [#4199](https://github.com/bpftrace/bpftrace/pull/4199)
+- `strcontains` and `has_key` now return boolean values instead of 1 and 0
+  - [#4280](https://github.com/bpftrace/bpftrace/pull/4280)
+- JSON serialization for unsupported and unknown types (e.g. `float`) may now
+  use `null` now rather than the empty string
+  - [#4302](https://github.com/bpftrace/bpftrace/pull/4302)
+- Text mode now emits all non-script generated output (e.g., errors, attached notifications) to `stderr` instead of `stdout`
+  - [#4504](https://github.com/bpftrace/bpftrace/pull/4504)
+#### Added
+- Add ncpus builtin to get the number of CPUs.
+  - [#4105](https://github.com/bpftrace/bpftrace/pull/4105)
+- Use blazesym for user space address symbolization
+  - [#3884](https://github.com/bpftrace/bpftrace/pull/3884)
+- Add simple block expressions
+  - [#3780](https://github.com/bpftrace/bpftrace/pull/3780)
+- Add map declaration syntax (behind an "unstable" config flag)
+  - [#3863](https://github.com/bpftrace/bpftrace/pull/3863)
+- Add license config to specify BPF license
+  - [#3905](https://github.com/bpftrace/bpftrace/pull/3905)
+- Rawtracepoints can now use `args` builtin and list params
+  - [#3918](https://github.com/bpftrace/bpftrace/pull/3918)
+- Add ability to specify rawtracepoint modules
+  - [#3944](https://github.com/bpftrace/bpftrace/pull/3944)
+- Add 'show_debug_info' config for blazesym
+  - [#3999](https://github.com/bpftrace/bpftrace/pull/3999)
+- Add hygienic macros (behind an "unstable" config flag)
+  - [#4037](https://github.com/bpftrace/bpftrace/pull/4037)
+- Add warning when unset or empty positional parameters are used
+  - [#4095](https://github.com/bpftrace/bpftrace/pull/4095)
+- Support accessing up to 255 USDT probe args
+  - [#4118](https://github.com/bpftrace/bpftrace/pull/4118)
+- Add new builtin "usermode"
+  - [#4129](https://github.com/bpftrace/bpftrace/pull/4129)
+- Warn on discarded return values for specific builtin functions
+  - [#4191](https://github.com/bpftrace/bpftrace/pull/4191)
+- For loops now support `..` ranges
+  - [#4126](https://github.com/bpftrace/bpftrace/pull/4126)
+- For loops now support `break` and `continue`
+  - [#4250](https://github.com/bpftrace/bpftrace/pull/4250)
+- For loops now support `return`
+  - [#4255](https://github.com/bpftrace/bpftrace/pull/4255)
+- Add `pid` and `tid` functions for choosing between the initial or the current namespace
+  - [#4254](https://github.com/bpftrace/bpftrace/pull/4254)
+- Add boolean values (`true` and `false`)
+  - [#4280](https://github.com/bpftrace/bpftrace/pull/4280)
+- Add duration literals - suffixes include: `ns`, `us`, `ms`, `s`, `m`, `h`, `d`
+  - [#4317](https://github.com/bpftrace/bpftrace/pull/4317)
+- Add `getopt` function to handle named command line program arguments
+  - [#4258](https://github.com/bpftrace/bpftrace/pull/4258)
+- Add `socket_cookie` function to get the cookie of a socket
+  - [#4345](https://github.com/bpftrace/bpftrace/pull/4345)
+- Introduce `tseries` for capturing time series data
+  - [#3838](https://github.com/bpftrace/bpftrace/pull/3838)
+- Add ability to attach to running BPF programs and sub-programs via `fentry:bpf:prog_name` or `fentry:bpf:prog_id:prog_name`
+  - [#4354](https://github.com/bpftrace/bpftrace/pull/4354)
+- Add `BENCH` for creating microbenchmarks
+  - [#4343](https://github.com/bpftrace/bpftrace/pull/4343)
+- Add 'assert' and 'ppid' to the macro standard library
+  - [#4366](https://github.com/bpftrace/bpftrace/pull/4366)
+- Add 'errorf' for printing error messages with the source location
+  - [#4414](https://github.com/bpftrace/bpftrace/pull/4414)
+- Add ability to call most builtins with call-style syntax e.g. `comm()`
+  - [#4420](https://github.com/bpftrace/bpftrace/pull/4420)
+- Allow non-constant array access
+  - [#4491](https://github.com/bpftrace/bpftrace/pull/4491)
+- Add '0' flag for printf to fill with leading 0s
+  - [#4510](https://github.com/bpftrace/bpftrace/pull/4510)
+- Add support for LLVM 21
+  - [#4528](https://github.com/bpftrace/bpftrace/pull/4528)
+#### Changed
+- kprobe: support verbose mode listing
+  - [#4362](https://github.com/bpftrace/bpftrace/pull/4362)
+- `-p` CLI flag now applies to all probes (except BEGIN/END)
+  - [#3800](https://github.com/bpftrace/bpftrace/pull/3800)
+- Introduce automatic session probes
+  - [#3772](https://github.com/bpftrace/bpftrace/pull/3772)
+- Positional params can be used in any part of a probe string
+  - [#3956](https://github.com/bpftrace/bpftrace/pull/3956)
+- Add signed type checking for map assignments
+  - [#4132](https://github.com/bpftrace/bpftrace/pull/4132)
+- Add signed type checking for map keys
+  - [#4136](https://github.com/bpftrace/bpftrace/pull/4136)
+- `delete` now returns 1 if successful, 0 if not
+  - [#4186](https://github.com/bpftrace/bpftrace/pull/4186)
+- if `delete` fails it will only print a warning if return value is not handled
+  - [#4186](https://github.com/bpftrace/bpftrace/pull/4186)
+- Change "Attaching N probes..." to "Attached N probes"
+  - [#4194](https://github.com/bpftrace/bpftrace/pull/4194)
+- runqlat.bt: ignore idle task
+  - [#4194](https://github.com/bpftrace/bpftrace/pull/4291)
+- Only cache symbols from targeted process
+  - [#4315](https://github.com/bpftrace/bpftrace/pull/4315)
+- Automatically exit if only BEGIN/END probes are specified
+  - [#4358](https://github.com/bpftrace/bpftrace/pull/4358)
+- Moved docs for builtins, functions, and map functions into stdlib.md and moved language docs into language.md
+  - [#4367](https://github.com/bpftrace/bpftrace/pull/4367)
+- Make probe provider names case insensitive
+  - [#4371](https://github.com/bpftrace/bpftrace/pull/4371)
+- If, for, while and unroll statements can have omitted parentheses for unary expressions
+  - [#4503](https://github.com/bpftrace/bpftrace/pull/4503)
+#### Deprecated
+#### Removed
+#### Fixed
+- Fix build failures due to missing location.hh
+  - [#3987](https://github.com/bpftrace/bpftrace/pull/3987)
+- Fix 32-bit build failures due to missing cast
+  - [#4006](https://github.com/bpftrace/bpftrace/pull/4006)
+- Don't crash if kernel isn't built with PID namespaces
+  - [#3976](https://github.com/bpftrace/bpftrace/pull/3976)
+- Allow sized_type idents to be used for field access
+  - [#4064](https://github.com/bpftrace/bpftrace/pull/4064)
+- Fix per-cpu map update warning
+  - [#4047](https://github.com/bpftrace/bpftrace/pull/4074)
+- Fix probe firing order for fexit and software
+  - [#4113](https://github.com/bpftrace/bpftrace/pull/4113)
+- Fix type mismatch error for map assignments
+  - [#4130](https://github.com/bpftrace/bpftrace/pull/4130)
+- Parse BTF for implicit kernel modules in kprobe/kretprobe
+  - [#4137](https://github.com/bpftrace/bpftrace/pull/4137)
+- Fix execution watchpoints
+  - [#4139](https://github.com/bpftrace/bpftrace/pull/4139)
+- Fix incorrect reporting of attached count for multi probes
+  - [#4194](https://github.com/bpftrace/bpftrace/pull/4194)
+- Attach watchpoint probes to newly created threads
+  - [#4239](https://github.com/bpftrace/bpftrace/pull/4239)
+- Fix reading of __data_loc tracepoint arguments
+  - [#4238](https://github.com/bpftrace/bpftrace/pull/4238)
+- Fix kstack/ustack on big-endian systems
+  - [#4244](https://github.com/bpftrace/bpftrace/pull/4244)
+- Report expanded probe name when trying to attach
+  - [#4353](https://github.com/bpftrace/bpftrace/pull/4353)
+- Fix codegen optimization bug with the modulo operator
+  - [#4383](https://github.com/bpftrace/bpftrace/pull/4383)
+#### Security
+#### Docs
+#### Tools
+- opensnoop.bt: support openat2 syscall
+  - [#4310](https://github.com/bpftrace/bpftrace/pull/4310)
+- killsnoop.bt: display signal name instead of value
+  - [#4234](https://github.com/bpftrace/bpftrace/pull/4234)
+- killsnoop.bt: support tkill() and tgkill()
+  - [#4190](https://github.com/bpftrace/bpftrace/pull/4190)
+- Remove tools example usage txt files and move info to comments
+  - [#4187](https://github.com/bpftrace/bpftrace/pull/4187)
+- Fix biosnoop.bt to print comm from block_io_start probe
+  - [#4013](https://github.com/bpftrace/bpftrace/pull/4013)
+
+## [0.23.0] 2025-03-25
+
+#### Breaking Changes
+- Remove '-kk' command line opt, surface some BPF errors by default, and make '-k' surface probe read errors
+  - [#3784](https://github.com/bpftrace/bpftrace/pull/3784)
+#### Added
+- `offsetof()` now supports sub fields e.g. `offsetof(struct Foo, bar.a.b);`
+  - [#3761](https://github.com/bpftrace/bpftrace/pull/3761)
+- Pointers may now be used in if conditions, tenary conditions and as operands in logical AND and OR expressions
+  - [#3656](https://github.com/bpftrace/bpftrace/pull/3656)
+- `len` now also accepts `ustack` and `kstack` as arguments
+  - [#3769](https://github.com/bpftrace/bpftrace/pull/3769)
+- `blazesym` will be used for address symbolication if found during build
+  - [#3760](https://github.com/bpftrace/bpftrace/pull/3760)
+  - [#3787](https://github.com/bpftrace/bpftrace/pull/3787)
+- Published aarch64 appimage builds from master
+  - [#3795](https://github.com/bpftrace/bpftrace/pull/3795)
+- Add ability to cast int to an enum
+  - [#3812](https://github.com/bpftrace/bpftrace/pull/3812)
+- Added warning when strcontains() is used on strings that are too big and may cause verifier issues
+  - [#3811](https://github.com/bpftrace/bpftrace/pull/3811)
+- Add support for LLVM 20
+  - [#3841](https://github.com/bpftrace/bpftrace/pull/3841)
+#### Changed
+- `probe` builtin is now represented as a string type
+  - [#3638](https://github.com/bpftrace/bpftrace/pull/3638)
+- Change bpftrace help flag output from stderr to stdout
+  - [#3678](https://github.com/bpftrace/bpftrace/pull/3678)
+- Change max_strlen default from 64 to 1024
+  - [#3713](https://github.com/bpftrace/bpftrace/pull/3713)
+- Add feature check for castable map reads
+  - [#3752](https://github.com/bpftrace/bpftrace/pull/3752)
+- Increase default values for max_bpf_progs and max_probes
+  - [#3808](https://github.com/bpftrace/bpftrace/pull/3808)
+- Allow use of variables before they are assigned
+  - [#3832](https://github.com/bpftrace/bpftrace/pull/3832)
+#### Deprecated
+#### Removed
+- Drop support for LLVM 14 and 15
+  - [#3825](https://github.com/bpftrace/bpftrace/pull/3825)
+#### Fixed
+- Fix json output for none type
+  - [#3692](https://github.com/bpftrace/bpftrace/pull/3692)
+- Fix bug where strftime() %f specifier could be off by up to 1s
+  - [#3704](https://github.com/bpftrace/bpftrace/pull/3704)
+- Fix `pid`, `tid` and `ustack` when running bpftrace in containers with PID namespacing
+  - [#3428](https://github.com/bpftrace/bpftrace/pull/3428)
+- Do not generate functions for empty attach points
+  - [#3715](https://github.com/bpftrace/bpftrace/pull/3715)
+- Fix ternary expression to accept all types
+  - [#3765](https://github.com/bpftrace/bpftrace/pull/3765)
+- Fix feature detection for tracing program types
+  - [#3805](https://github.com/bpftrace/bpftrace/pull/3805)
+- Fix strcontains() correctness bug where matches could be lost if both strings are non-literal
+  - [#3811](https://github.com/bpftrace/bpftrace/pull/3811)
+- Fix str() bug where optional size parameter did not count towards NUL terminator
+  - [#3849](https://github.com/bpftrace/bpftrace/pull/3849)
+#### Security
+#### Docs
+#### Tools
+- Fix dcsnoop.bt on newer kernels
+  - [#3715](https://github.com/bpftrace/bpftrace/pull/3715)
+
+## [0.22.0] 2025-01-07
+
+#### Breaking Changes
+- Return `uint32` instead of `uint64` for `pid` and `tid` builtins
+  - [#3441](https://github.com/bpftrace/bpftrace/pull/3441)
+  - [Migration guide](docs/migration_guide.md#pid-and-tid-builtins-return-uint32)
+- Remove multi-map `delete` functionality
+  - [#3506](https://github.com/bpftrace/bpftrace/pull/3506)
+  - [Migration guide](docs/migration_guide.md#multi-key-delete-removed)
+- Add lexical/block scoping for variables
+  - [#3367](https://github.com/bpftrace/bpftrace/pull/3367)
+  - [Migration guide](docs/migration_guide.md#added-block-scoping-for-scratch-variables)
+- Replace default map printing on `SIGUSR1` with custom signal handling probes
+  - [#3522](https://github.com/bpftrace/bpftrace/pull/3522)
+  - [Migration guide](docs/migration_guide.md#default-sigusr1-handler-removed)
+#### Added
+- Add env var to colorize bpftrace log output
+  - [#3710](https://github.com/bpftrace/bpftrace/pull/3710)
+- Bump max supported LLVM version to 19
+  - [#3433](https://github.com/bpftrace/bpftrace/pull/3433)
+- Add `--dry-run` CLI option
+  - [#3203](https://github.com/bpftrace/bpftrace/pull/3203)
+- Enable avg map reads in kernel space (implicit casting)
+  - [#3268](https://github.com/bpftrace/bpftrace/pull/3268)
+- Enable for-loops in multiple probes
+  - [#3285](https://github.com/bpftrace/bpftrace/pull/3285)
+- For-loops: Allow sharing variables between the main probe and the loop's body
+  - [#3014](https://github.com/bpftrace/bpftrace/pull/3014)
+- Parse C++ Class and Inheritance from Debug Info
+  - [#3094](https://github.com/bpftrace/bpftrace/pull/3094)
+- Add an optional `size` parameter to `path`
+  - [#3401](https://github.com/bpftrace/bpftrace/pull/3401)
+- Allow tuples to be used as map keys
+  - [#3390](https://github.com/bpftrace/bpftrace/pull/3390/)
+- Add `has_key` function for maps
+  - [#3358](https://github.com/bpftrace/bpftrace/pull/3358)
+- Add ability to attach kprobes to inlined functions
+  - [#3301](https://github.com/bpftrace/bpftrace/pull/3095)
+- Variable declarations with `let`
+  - [#3461](https://github.com/bpftrace/bpftrace/pull/3461)
+- Support symbolizing enum values using `%s` specifier in `printf()`
+  - [#3515](https://github.com/bpftrace/bpftrace/pull/3515)
+- Configuration option to suppress printing maps by default at program exit
+  - [#3547](https://github.com/bpftrace/bpftrace/pull/3547)
+- Add `symbol_source` config to source uprobe locations from either DWARF or the Symbol Table
+  - [#3504](https://github.com/bpftrace/bpftrace/pull/3504/)
+- Introduce builtin to access percpu kernel data
+  - [#3596](https://github.com/bpftrace/bpftrace/pull/3596/)
+#### Changed
+- Merge output into `stdout` when `-lv`
+  - [#3383](https://github.com/bpftrace/bpftrace/pull/3383)
+- Stream output when printing maps
+  - [#3264](https://github.com/bpftrace/bpftrace/pull/3264)
+- Only print kernel headers not found message if parsing fails
+  - [#3265](https://github.com/bpftrace/bpftrace/pull/3265)
+- Add mandatory "stage" argument to the `-d` CLI option
+  - [#3203](https://github.com/bpftrace/bpftrace/pull/3203)
+- Allow simultaneous use of `-v` and `-d`
+  - [#3203](https://github.com/bpftrace/bpftrace/pull/3203)
+- Remove length limitations for the `buf` builtin function
+  - [#3249](https://github.com/bpftrace/bpftrace/pull/3249)
+- Change `delete` API to accept a map and key as separate args
+  - [#3472](https://github.com/bpftrace/bpftrace/pull/3472)
+- Symbolize enums when used in maps
+  - [#3539](https://github.com/bpftrace/bpftrace/pull/3539)
+- Supported LLVM version for static builds changed to LLVM 18
+  - [#3631](https://github.com/bpftrace/bpftrace/pull/3631)
+#### Deprecated
+#### Removed
+- Remove the `-dd` CLI option
+  - [#3203](https://github.com/bpftrace/bpftrace/pull/3203)
+- Drop support for LLVM 12 and below
+  - [#3325](https://github.com/bpftrace/bpftrace/pull/3325)
+- Remove `ALLOW_UNSAFE_PROBE` compiler flag
+  - [#3476](https://github.com/bpftrace/bpftrace/pull/3476)
+#### Fixed
+- Fix verifier error when array indexing through pointer
+  - [#3465](https://github.com/bpftrace/bpftrace/pull/3465)
+- Fix segfault for multi-tracepoint probes
+  - [#3274](https://github.com/bpftrace/bpftrace/pull/3274)
+- Fix verifier error from misaligned stack access when using strings as map keys
+  - [#3294](https://github.com/bpftrace/bpftrace/issues/3294)
+- Fix min/max map functions
+  - [#3298](https://github.com/bpftrace/bpftrace/pull/3298)
+- Fix stack mode for stack builtin
+  - [#3322](https://github.com/bpftrace/bpftrace/pull/3322)
+- Fix lldb support in appimage builds
+  - #[3339](https://github.com/bpftrace/bpftrace/pull/3339)
+- Fix parsing large unsigned int strings as positional params
+  - [#3336](https://github.com/bpftrace/bpftrace/pull/3336)
+- Fix json formatting for `strftime` function
+  - [#3381](https://github.com/bpftrace/bpftrace/pull/3381)
+- Fix BTF/DWARF parsing for structs contained in arrays
+  - [#3422](https://github.com/bpftrace/bpftrace/pull/3422)
+- Fix integer comparisons and auto casting for scratch variables
+  - [#3416](https://github.com/bpftrace/bpftrace/pull/3416)
+- Fix tuple resizing
+  - [#3443](https://github.com/bpftrace/bpftrace/pull/3443)
+- Handle invalid BTF without crashing
+  - [#3453](https://github.com/bpftrace/bpftrace/pull/3453)
+- Fix json formatting for hex values
+  - [#3475](https://github.com/bpftrace/bpftrace/pull/3475)
+- Fix binary operations on integers always returning 64 bit values
+  - [#3517](https://github.com/bpftrace/bpftrace/pull/3517)
+- Fix verifier error when comparing result of len()
+  - [#3308](https://github.com/bpftrace/bpftrace/issues/3308)
+- Fix type back propagation for map keys
+  - [#3536](https://github.com/bpftrace/bpftrace/pull/3536)
+- Fix crash by adding checks for bad var/map assignments
+  - [#3542](https://github.com/bpftrace/bpftrace/pull/3542)
+- Fix field access and offsetof for strings that are builtin types
+  - [#3565](https://github.com/bpftrace/bpftrace/pull/3565)
+- Fix crash when using castable per-cpu map types as map keys
+  - [#3594](https://github.com/bpftrace/bpftrace/pull/3594)
+- Fix loop values with per-cpu aggregations
+  - [#3664](https://github.com/bpftrace/bpftrace/pull/3664)
+#### Security
+#### Docs
+- Remove mention of unsupported character literals
+  - [#3283](https://github.com/bpftrace/bpftrace/pull/3283)
+#### Tools
+- Fix bashreadline tool probe for dynamically linked readline
+  - [#3564](https://github.com/bpftrace/bpftrace/pull/3564)
+- Switch all bio* tools to tracepoints
+  - [#3622](https://github.com/bpftrace/bpftrace/pull/3622)
+
+## [0.21.0] 2024-06-21
+
+#### Added
+- Add `lazy_symbolication` config option
+  - [#2958](https://github.com/bpftrace/bpftrace/pull/2958)
+- Add ability to list all probes in a program
+  - [#2969](https://github.com/bpftrace/bpftrace/pull/2969)
+- Add ability to call print() with indexed maps to print single map values
+  - [#3027](https://github.com/bpftrace/bpftrace/pull/3027)
+- Add LLVM 18 support
+  - [#3051](https://github.com/bpftrace/bpftrace/pull/3051)
+- Add ability to call delete() with multiple arguments
+  - [#3046](https://github.com/bpftrace/bpftrace/pull/3046)
+- Add for-each loops for iterating over map elements
+  - [#3003](https://github.com/bpftrace/bpftrace/pull/3003)
+- Add optional systemd support
+  - [#3158](https://github.com/bpftrace/bpftrace/pull/3158)
+- Add ability to attach uprobes to inlined functions
+  - [#3095](https://github.com/bpftrace/bpftrace/pull/3095)
+- Enable count, sum, min, and max map reads in kernel space (implicit casting)
+  - [#3189](https://github.com/bpftrace/bpftrace/pull/3189)
+  - [#3226](https://github.com/bpftrace/bpftrace/pull/3226)
+- Add config option for handling missing probes
+  - [#3246](https://github.com/bpftrace/bpftrace/pull/3246)
+- Support large arguments for printf() and print()
+  - [#3368](https://github.com/bpftrace/bpftrace/pull/3368)
+- Add ability to call exit() with an exit code
+  - [#3501](https://github.com/bpftrace/bpftrace/pull/3501)
+#### Changed
+- Better error message for args in mixed probes
+  - [#3047](https://github.com/bpftrace/bpftrace/pull/3047)
+- Reproducible Builds: Do not store timestamps in gzip header
+  - [#3096](https://github.com/bpftrace/bpftrace/pull/3096)
+- Improve DWARF support, using liblldb instead of libdw
+  - [#3042](https://github.com/bpftrace/bpftrace/pull/3042)
+- Use new hash function to reduce collisions when aggregating on stack traces
+  - [#3060](https://github.com/bpftrace/bpftrace/pull/3060)
+- Disable func builtin for kretprobes and uretprobes when `get_func_ip` feature is not available
+  - [#2645](https://github.com/bpftrace/bpftrace/pull/2645)
+- Move error printing from debug to verbose mode
+  - [#3202](https://github.com/bpftrace/bpftrace/pull/3202)
+- Better error message when libbpf is too old
+  - [#3212](https://github.com/bpftrace/bpftrace/pull/3212)
+- Allow trailing semicolons and empty blocks in config syntax
+  - [#3077](https://github.com/bpftrace/bpftrace/pull/3077)
+- Allow attaching to `spin_lock` functions with mitigations to prevent deadlocks
+  - [#3206](https://github.com/bpftrace/bpftrace/pull/3206)
+- Remove length limitations for strings coming out of `str()` and `path()`
+  - [#3228](https://github.com/bpftrace/bpftrace/pull/3228)
+  - [#3237](https://github.com/bpftrace/bpftrace/pull/3237)
+  - [#3245](https://github.com/bpftrace/bpftrace/pull/3245)
+#### Deprecated
+- Deprecate `sarg` builtin
+  - [#3095](https://github.com/bpftrace/bpftrace/pull/3095)
+#### Removed
+#### Fixed
+- Fix ability to interrupt bpftrace during probe attach
+  - [#3053](https://github.com/bpftrace/bpftrace/pull/3053)
+- Fix field resolution on structs with anon union as first field
+  - [#2964](https://github.com/bpftrace/bpftrace/pull/2964)
+- Fix alignment of atomic map counter update
+  - [#3045](https://github.com/bpftrace/bpftrace/pull/3045)
+- Fix func builtin for kretprobes and uretprobes for kernels with working `get_func_ip` feature
+  - [#2645](https://github.com/bpftrace/bpftrace/pull/2645)
+- Fix ustack missing the second-from-top stack frame in uprobes
+  - [#3095](https://github.com/bpftrace/bpftrace/pull/3095)
+- Fix storing strings of differing lengths in a variable
+  - [#3178](https://github.com/bpftrace/bpftrace/pull/3178)
+- Fix field resolution for structs in arrays
+  - [#3024](https://github.com/bpftrace/bpftrace/pull/3024)
+- Fix error in dereferencing kernel double pointers
+  - [#3024](https://github.com/bpftrace/bpftrace/pull/3024)
+- Fix variable corruption when used as map key
+  - [#3195](https://github.com/bpftrace/bpftrace/pull/3195)
+- Fix crash when assigning a record type to a map
+  - [#3220](https://github.com/bpftrace/bpftrace/pull/3220)
+- Fix type resolution for pointers with `BTF_KIND_TYPE_TAG`
+  - [#3240](https://github.com/bpftrace/bpftrace/pull/3240)
+- Fix attachment of probes attaching to wildcarded and non-wildcarded kprobes
+  - [#3246](https://github.com/bpftrace/bpftrace/pull/3246)
+#### Security
+- Don't unpack kernel headers or look in tmp
+  - [#3156](https://github.com/bpftrace/bpftrace/pull/3156)
+#### Docs
+#### Tools
+- Ignore warnings for missing probes
+  - [#3246](https://github.com/bpftrace/bpftrace/pull/3246)
+
+## [0.20.0] 2024-01-22
+
+#### Added
+- Add log2 histograms with finer granularity
+  - [#2831](https://github.com/bpftrace/bpftrace/pull/2831)
+- Add a `jiffies` builtin for advanced usages
+  - [#2769](https://github.com/bpftrace/bpftrace/pull/2769)
+- Emit better errors messages for invalid attachpoints
+  - [#2781](https://github.com/bpftrace/bpftrace/pull/2781)
+- Add support for uprobe_multi link
+  - [#2810](https://github.com/bpftrace/bpftrace/pull/2810)
+- Attach BTF to generated BPF programs
+  - [#2804](https://github.com/bpftrace/bpftrace/pull/2804)
+- Add fentry/fexit aliases for kfunc/kretfunc
+  - [#2844](https://github.com/bpftrace/bpftrace/pull/2844)
+- Add support for uprobe pid targeting
+  - [#2830](https://github.com/bpftrace/bpftrace/pull/2830)
+- New builtin for getting the number of map elements
+  - [#2840](https://github.com/bpftrace/bpftrace/pull/2840)
+- Add more helpful error messages for map operations
+  - [#2905](https://github.com/bpftrace/bpftrace/pull/2905)
+- New config block syntax
+  - [#2815](https://github.com/bpftrace/bpftrace/pull/2815)
+- Add support for kprobe:module:function
+  - [#2897](https://github.com/bpftrace/bpftrace/pull/2897)
+#### Changed
+- Standardize config and env var names
+  - [#2815](https://github.com/bpftrace/bpftrace/pull/2815)
+#### Deprecated
+#### Removed
+- Remove snapcraft support
+  - [#2832](https://github.com/bpftrace/bpftrace/pull/2832)
+#### Fixed
+- Fix JSON output for cgroup_path
+  - [#2793](https://github.com/bpftrace/bpftrace/pull/2793)
+- Fix silent truncation of 64-bit values in hist()
+  - [#2822](https://github.com/bpftrace/bpftrace/pull/2822)
+- utils: use /data/local/tmp as temprary dir on Android
+  - [#2828](https://github.com/bpftrace/bpftrace/pull/2828)
+- Fix uprobe multi probe for targets with wildcards
+  - [#2851](https://github.com/bpftrace/bpftrace/pull/2851)
+- Fix symbolication on for 32-bit userspcae and 64-bit kernel
+  - [#2869](https://github.com/bpftrace/bpftrace/pull/2869)
+- Fix retval for kretfunc/fexit
+  - [#2864](https://github.com/bpftrace/bpftrace/pull/2864)
+- Fix attachment/listing of wildcarded module kfuncs
+  - [#2914](https://github.com/bpftrace/bpftrace/pull/2914)
+- Fix uprobe attachment across container boundary
+  - [#2662](https://github.com/bpftrace/bpftrace/pull/2662)
+- Fix generated BTF for older kernels
+  - [#2934](https://github.com/bpftrace/bpftrace/pull/2934)
+#### Docs
+- Fix one-liner tutorial for systems with BTF
+  - [#2919](https://github.com/bpftrace/bpftrace/pull/2919)
+  - [#2924](https://github.com/bpftrace/bpftrace/pull/2924)
+#### Tools
+- Add PPID field to `execsnoop.bt`
+  - [#2876](https://github.com/bpftrace/bpftrace/pull/2876)
+- Use `strftime` instead of `elapsed` in `execsnoop.bt`
+  - [#2904](https://github.com/bpftrace/bpftrace/pull/2904)
+- Use `strftime` instead of `elapsed` in `threadsnoop.bt`
+  - [#2917](https://github.com/bpftrace/bpftrace/pull/2917)
+- Increase PID field width and align to the right in `threadsnoop.bt`
+  - [#2928](https://github.com/bpftrace/bpftrace/pull/2928)
+- Update runqlen.bt to remove `runnable_weight` field from cfs_rq struct.
+  - [#2790](https://github.com/bpftrace/bpftrace/pull/2790)
+- Update mdflush.bt to use blkdev.h instead of genhd.h for non-BTF builds.
+  - [#2849](https://github.com/bpftrace/bpftrace/pull/2849)
+- Add milliseconds to timestamp and align numbers to the right in `killsnoop.bt`
+  - [#2936](https://github.com/bpftrace/bpftrace/pull/2936)
+
+## [0.19.0] 2023-09-19
+
+#### Added
+- Rawtracepoint support wildcards and list show
+  - [#2588](https://github.com/bpftrace/bpftrace/pull/2588)
+- Support all iterators
+  - [#2630](https://github.com/bpftrace/bpftrace/pull/2630)
+- Improve working with all probe params (kfunc, uprobe)
+  - [#2477](https://github.com/bpftrace/bpftrace/pull/2477)
+- Support func builtin for k(ret)func probes
+  - [#2692](https://github.com/bpftrace/bpftrace/pull/2692)
+- Support casting int <-> int array
+  - [#2686](https://github.com/bpftrace/bpftrace/pull/2686)
+- Support targeting all running processes for USDTs
+  - [#2734](https://github.com/bpftrace/bpftrace/pull/2734)
+- Support targeting all running processes for uprobes/uretprobes
+  - [#2757](https://github.com/bpftrace/bpftrace/pull/2757)
+#### Changed
+- Make `args` a structure (instead of a pointer)
+  - [#2578](https://github.com/bpftrace/bpftrace/pull/2578)
+- Improve user symbol resolution
+  - [#2386](https://github.com/bpftrace/bpftrace/pull/2386)
+- uprobes: make C++ symbol demangling explicit
+  - [#2657](https://github.com/bpftrace/bpftrace/pull/2657)
+- uprobe: improve C++ probes listing
+  - [#2693](https://github.com/bpftrace/bpftrace/pull/2693)
+#### Removed
+- Delete embedded build support and surrounding infra
+  - [#2742](https://github.com/bpftrace/bpftrace/pull/2742)
+#### Fixed
+- Fix resolving username for malformed /etc/passwd
+  - [#2631](https://github.com/bpftrace/bpftrace/pull/2631)
+- Fix crashes when maps are concurrently modified
+  - [#2623](https://github.com/bpftrace/bpftrace/pull/2623)
+- Fix alignment of byte arrays inside tuples
+  - [#2625](https://github.com/bpftrace/bpftrace/pull/2625)
+- cmake: fix linking libbfd
+  - [#2673](https://github.com/bpftrace/bpftrace/pull/2673)
+- Allow '+' in attach point path
+  - [#2696](https://github.com/bpftrace/bpftrace/pull/2696)
+- Improve listing and 'probe' builtin for several probe types
+  - [#2691](https://github.com/bpftrace/bpftrace/pull/2691)
+- Allow probe builtin with aliased software/hardware probes
+  - [#2711](https://github.com/bpftrace/bpftrace/pull/2711)
+- Support executing symlinked binaries with `-c`
+  - [#2708](https://github.com/bpftrace/bpftrace/pull/2708)
+- Add access to `CLOCK_MONOTONIC` with `nsecs(monotonic)`
+  - [#2718](https://github.com/bpftrace/bpftrace/pull/2718)
+- iter: Skip structures with '__safe_trusted' suffix
+  - [#2732](https://github.com/bpftrace/bpftrace/pull/2732)
+- Improve detection of unknown typedefs in ClangParser
+  - [#2763](https://github.com/bpftrace/bpftrace/pull/2763)
+
+
+## [0.18.0] 2023-05-15
+
+#### Added
+- Add `iter:task_vma` iterators detection
+  - [#2524](https://github.com/bpftrace/bpftrace/pull/2524)
+- Support parsing bitfields from BTF/DWARF
+  - [#2505](https://github.com/bpftrace/bpftrace/pull/2505)
+- Support printing entire structs
+  - [#2557](https://github.com/bpftrace/bpftrace/pull/2557)
+- BTF support for tracepoints defined in modules
+  - [#2479](https://github.com/bpftrace/bpftrace/pull/2479)
+- Add trailer to truncated strings
+  - [#2559](https://github.com/bpftrace/bpftrace/pull/2559)
+- Enable watchpoint support for PowerPC
+  - [#2577](https://github.com/bpftrace/bpftrace/pull/2577)
+- Add new function, `offsetof`, get the offset of the element in the struct
+  - [#2579](https://github.com/bpftrace/bpftrace/pull/2579)
+- Add 'StackMode::raw' for ustack and kstack formatting
+  - [#2581](https://github.com/bpftrace/bpftrace/pull/2581)
+- Add 'BPFTRACE_STACK_MODE' env variable
+  - [#2586](https://github.com/bpftrace/bpftrace/pull/2586)
+#### Changed
+- Improve attaching to uprobes with size 0
+  - [#2562](https://github.com/bpftrace/bpftrace/pull/2562)
+- Support ringbuf output
+  - [#2475](https://github.com/bpftrace/bpftrace/pull/2475)
+#### Deprecated
+#### Removed
+#### Fixed
+- Simplify and fix probe index assignment
+  - [#2482](https://github.com/bpftrace/bpftrace/pull/2482)
+- Handle colon in positional param used in attachpoint
+  - [#2514](https://github.com/bpftrace/bpftrace/pull/2514)
+- Handle BPF load errors for multi-attachpoints
+  - [#2521](https://github.com/bpftrace/bpftrace/pull/2521)
+- Respect BPFTRACE_STRLEN environment variable for all strings
+  - [#2545](https://github.com/bpftrace/bpftrace/pull/2545)
+- Treat str() builtin's len parameter as int64
+  - [#2546](https://github.com/bpftrace/bpftrace/pull/2546)
+- arm64: define the KASAN_SHADOW_SCALE_SHIFT macro
+  - [#2518](https://github.com/bpftrace/bpftrace/pull/2518)
+- Fix segfaults in dwarf_parser
+  - [#2587](https://github.com/bpftrace/bpftrace/pull/2587)
+#### Docs
+#### Tools
+
+## [0.17.0] 2023-01-30
+
+#### Added
+- Support for 32-bit ARM systems
+  - [#2360](https://github.com/bpftrace/bpftrace/pull/2360)
+- Support BTF for kernel modules
+  - [#2315](https://github.com/bpftrace/bpftrace/pull/2315)
+- Add %rh option to print buffer as hex without \x
+  - [#2445](https://github.com/bpftrace/bpftrace/pull/2445)
+- Add stdbool.h to built-in headers
+  - [#2380](https://github.com/bpftrace/bpftrace/pull/2380)
+- Add `strcontains` builtin function, find a substring in a string
+  - [#2393](https://github.com/bpftrace/bpftrace/pull/2393)
+
+#### Changed
+- Raise minimum versions for libbpf and bcc and vendor them for local builds
+  - [#2369](https://github.com/bpftrace/bpftrace/pull/2369)
+  - [#2370](https://github.com/bpftrace/bpftrace/pull/2370)
+- Support comparison for integer arrays
+  - [#2387](https://github.com/bpftrace/bpftrace/pull/2387)
+#### Deprecated
+#### Removed
+- Drop Ubuntu 19.10 lockdown detection
+  - [#2467](https://github.com/bpftrace/bpftrace/pull/2467)
+#### Fixed
+- Fix pointer/register loads on 32-bit architectures
+  - [#2361](https://github.com/bpftrace/bpftrace/pull/2361)
+- Fix kprobe multi-attachment
+  - [#2381](https://github.com/bpftrace/bpftrace/pull/2381)
+- Fix attaching to multiple USDT probes using the same wildcard
+  - [#2456](https://github.com/bpftrace/bpftrace/pull/2456)
+- Fix pointer arithmetics codegen
+  - [#2397](https://github.com/bpftrace/bpftrace/pull/2397)
+- Fix segfault for invalid AssignVarStatement visit
+  - [#2423](https://github.com/bpftrace/bpftrace/pull/2423)
+- Better handling of missing function trace support files
+  - [#2433](https://github.com/bpftrace/bpftrace/pull/2433)
+- Fix unroll ID reset
+  - [#2439](https://github.com/bpftrace/bpftrace/pull/2439)
+- Support profile and interval probes in probe matcher
+  - [#2443](https://github.com/bpftrace/bpftrace/pull/2443)
+- Fix BTF detection macro in tools/old/mdflush.bt
+  - [#2444](https://github.com/bpftrace/bpftrace/pull/2444)
+
+#### Docs
+#### Tools
+
+## [0.16.0] 2022-08-30
+
+#### Added
+- Add builtin: `numaid`
+  - [#2177](https://github.com/bpftrace/bpftrace/pull/2177)
+- Add helper verifier error handling
+  - [#2279](https://github.com/bpftrace/bpftrace/pull/2279)
+- Add builtin: `pton`
+  - [#2289](https://github.com/bpftrace/bpftrace/pull/2289)
+- Add builtin: `debugf`
+  - [#2307](https://github.com/bpftrace/bpftrace/pull/2307)
+- Add builtin: `strerror`
+  - [#2329](https://github.com/bpftrace/bpftrace/pull/2329)
+
+#### Changed
+- Move from BCC to libbpf
+  - [#2265](https://github.com/bpftrace/bpftrace/pull/2265)
+- Add non-uprobe based BEGIN/END implementation
+  - [#2264](https://github.com/bpftrace/bpftrace/pull/2264)
+- Helper errors (-k, -kk options) are now emitted to text or json output
+  - [#2326](https://github.com/bpftrace/bpftrace/pull/2326)
+- kprobe offset verification is now optional, without requiring --unsafe
+  - [#2332](https://github.com/bpftrace/bpftrace/pull/2332)
+
+#### Deprecated
+#### Removed
+#### Fixed
+- Disallow different lhist bounds in a single map
+  - [#2204](https://github.com/bpftrace/bpftrace/pull/2204)
+- Serialize empty histogram as an empty JSON array
+  - [#2250](https://github.com/bpftrace/bpftrace/pull/2250)
+- Handle enum values in tracepoint format defs
+  - [#2236](https://github.com/bpftrace/bpftrace/pull/2236)
+- Fix compound assignments with non-unary expr
+  - [#2291](https://github.com/bpftrace/bpftrace/pull/2293)
+- Fix invalid LLVM IR in join builtin
+  - [#2296](https://github.com/bpftrace/bpftrace/pull/2296)
+- Fix lexer buffer size check
+  - [#2313](https://github.com/bpftrace/bpftrace/pull/2313)
+- Fix invalid LLVM IR as detected by tests
+  - [#2316](https://github.com/bpftrace/bpftrace/pull/2316)
+- Fix builds against libbfd(binutils) >=2.39
+  - [#2328](https://github.com/bpftrace/bpftrace/pull/2328)
+- Fix access to ctx
+  - [#2343](https://github.com/bpftrace/bpftrace/pull/2343)
+
+#### Docs
+#### Tools
+- Add sslsnoop and ssllatency tools
+  - [#2117](https://github.com/bpftrace/bpftrace/pull/2117)
+- Add undump tool.
+  - [#2225](https://github.com/bpftrace/bpftrace/pull/2225)
+
+## [0.15.0] 2022-05-24
+
+The 0.15.0 release has basic support for LLVM 14 but not all features work yet, see [#2228](https://github.com/bpftrace/bpftrace/issues/2228)
+
+#### Added
+- Add option for unconditional hex output
+  - [#2200](https://github.com/bpftrace/bpftrace/pull/2200)
+- Add builtin function: `cgroup_path`
+  - [#2055](https://github.com/bpftrace/bpftrace/pull/2055)
+- Limit number of generated BPF programs
+  - [#2141](https://github.com/bpftrace/bpftrace/pull/2141)
+- Support the octal format specifier (`%o`) in `printf`
+  - [#2147](https://github.com/bpftrace/bpftrace/pull/2147)
+- Improve include paths resolution
+  - [#2149](https://github.com/bpftrace/bpftrace/pull/2149)
+- Automatic type resolution from DWARF
+  - [#2034](https://github.com/bpftrace/bpftrace/pull/2034)
+- Add builtin function: `bswap`
+  - [#2166](https://github.com/bpftrace/bpftrace/pull/2166)
+- Print all maps to stdout on `SIGUSR1`
+  - [#2203](https://github.com/bpftrace/bpftrace/pull/2203)
+- Add builtin function: `skb_output`
+  - [#2223](https://github.com/bpftrace/bpftrace/pull/2223)
+
+#### Changed
+- Use auto-resolution of library paths for tools
+  - [#2181](https://github.com/bpftrace/bpftrace/pull/2181)
+- Improve handling empty attach points
+  - [#2179](https://github.com/bpftrace/bpftrace/pull/2179)
+
+#### Fixed
+- Fix precedence of multiplicative operations
+  - [#2096](https://github.com/bpftrace/bpftrace/pull/2096)
+- Fix probe matching for uprobes with absolute address
+  - [#2138](https://github.com/bpftrace/bpftrace/pull/2138)
+- Fix tools to work on new kernel versions
+  - [#2136](https://github.com/bpftrace/bpftrace/pull/2136)
+- Fix uprobe target resolution
+  - [#2180](https://github.com/bpftrace/bpftrace/pull/2180)
+- Fix using wildcards in kfunc
+  - [#2208](https://github.com/bpftrace/bpftrace/pull/2208)
+- Improve handling of format strings
+  - [#2164](https://github.com/bpftrace/bpftrace/pull/2164)
+- Fix codegen for buf
+  - [#2217](https://github.com/bpftrace/bpftrace/pull/2217)
+
+#### Tools
+- Update biosnoop.bt for kernel >=5.17
+  - [#2207](https://github.com/bpftrace/bpftrace/pull/2207)
+
+
+## [0.14.1] 2021-12-29
+
+#### Fixed
+
+- Fix precedence of multiplicative operations
+  - [#2096](https://github.com/bpftrace/bpftrace/pull/2096)
+
+## [0.14.0] 2021-10-22
+
+#### Added
+- Build time dependency on cereal
+  - [#1893](https://github.com/bpftrace/bpftrace/pull/1893)
+- Build time dependency on asciidoctor for man page generation
+  - [#1927] (https://github.com/bpftrace/bpftrace/pull/1927)
+- Support microsecond timestamps in stftime()
+  - [#1922](https://github.com/bpftrace/bpftrace/pull/1922)
+- Add `_` as integer literal digit separator
+  - [#1900](https://github.com/bpftrace/bpftrace/pull/1900)
+- Support for C style integer suffix in parser
+  - [#1938](https://github.com/bpftrace/bpftrace/pull/1938)
+- Add C like pointer arithmetic
+  - [#1881](https://github.com/bpftrace/bpftrace/pull/1881)
+- Automatic resolution of library paths for uprobes
+  - [#1971](https://github.com/bpftrace/bpftrace/pull/1971)
+- Support positional parameters as integer literals
+  - [#1982](https://github.com/bpftrace/bpftrace/pull/1982)
+- Access to uprobe arguments by name
+  - [#1994](https://github.com/bpftrace/bpftrace/pull/1994)
+- Support variable strings size
+  - [#2044](https://github.com/bpftrace/bpftrace/pull/2044)
+
+#### Changed
+- Prevent LLVM from unrolling loops
+  - [#1967](https://github.com/bpftrace/bpftrace/pull/1967)
+
+#### Deprecated
+
+#### Removed
+
+#### Fixed
+- Fix memory leaks in struct types
+  - [#1885](https://github.com/bpftrace/bpftrace/pull/1885)
+- Fix strncmp() when N is bigger than on-stack buffer
+  - [#1974](https://github.com/bpftrace/bpftrace/pull/1974)
+- Fix strncmp() to check for NUL terminator
+  - [#1974](https://github.com/bpftrace/bpftrace/pull/1974)
+- Fix unroll() with async calls
+  - [#1972](https://github.com/bpftrace/bpftrace/pull/1972)
+- Fix string comparison codegen
+  - [#1979](https://github.com/bpftrace/bpftrace/pull/1979)
+- Fix verifier error when accessing same tracepoint field twice
+  - [#2008](https://github.com/bpftrace/bpftrace/pull/2008)
+- Fix reading too many bits for <64 bit kfunc args
+  - [#2014](https://github.com/bpftrace/bpftrace/pull/2014)
+- Fix misaligned stack access for map keys
+  - [#2012](https://github.com/bpftrace/bpftrace/pull/2012)
+
+#### Tools
+
+#### Documentation
+- Write new man page for `bpftrace(8)`
+  - [#1711](https://github.com/bpftrace/bpftrace/pull/1711)
+
+## [0.13.1] 2021-12-29
+
+#### Fixed
+
+- Fix precedence of multiplicative operations
+  - [#2096](https://github.com/bpftrace/bpftrace/pull/2096)
+
+## [0.13.0] 2021-07-01
+
+#### Added
+- Warn if attaching a kprobe to a non-traceable function
+  - [#1835](https://github.com/bpftrace/bpftrace/pull/1835)
+- Support for `-k[k]` and `elapsed` in `iter` probes
+  - [#1882](https://github.com/bpftrace/bpftrace/pull/1882)
+
+#### Changed
+- Disallow accessing common tracepoint fields
+  - [#1810](https://github.com/bpftrace/bpftrace/pull/1810)
+- Improve JSON printing (nested structs)
+  - [#1778](https://github.com/bpftrace/bpftrace/pull/1778)
+- Return 1 from tracepoint probes
+  - [#1857](https://github.com/bpftrace/bpftrace/pull/1857)
+- Preserve original order of struct types
+  - [#1850](https://github.com/bpftrace/bpftrace/pull/1850)
+- Forbid casting from/to struct types
+  - [#1873](https://github.com/bpftrace/bpftrace/pull/1873)
+
+#### Deprecated
+
+#### Removed
+
+#### Fixed
+- Fix single arg wildcard probe listing
+  - [#1775](https://github.com/bpftrace/bpftrace/pull/1775)
+- Fix --info reporting wrong libbpf build info
+  - [#1776](https://github.com/bpftrace/bpftrace/pull/1776)
+- Reduce frequency of lost stack traces
+  - [#1812](https://github.com/bpftrace/bpftrace/pull/1812)
+- Make kaddr() report failure for unknown kernel symbols
+  - [#1836](https://github.com/bpftrace/bpftrace/pull/1836)
+- Fix false non-traceable function warnings
+  - [#1866](https://github.com/bpftrace/bpftrace/pull/1866)
+- Fix memory leak in clang parser
+  - [#1878](https://github.com/bpftrace/bpftrace/pull/1878)
+
+#### Tools
+
+#### Documentation
+
+## [0.12.1] 2021-04-16
+
+Incorrect --info output bug fix release
+
+## [0.12.0] 2021-04-01
+
 #### Added
 - Add path builtin
-  - [#1492](https://github.com/iovisor/bpftrace/pull/1492)
+  - [#1492](https://github.com/bpftrace/bpftrace/pull/1492)
 - Allow wildcards for tracepoint categories
-  - [#1445](https://github.com/iovisor/bpftrace/pull/1445)
+  - [#1445](https://github.com/bpftrace/bpftrace/pull/1445)
 - Add wildcard support for kfunc probe types
-  - [#1410](https://github.com/iovisor/bpftrace/pull/1410)
+  - [#1410](https://github.com/bpftrace/bpftrace/pull/1410)
 - Add builtin function: `strftime`
-  - [#1387](https://github.com/iovisor/bpftrace/pull/1387)
+  - [#1387](https://github.com/bpftrace/bpftrace/pull/1387)
 - Fix `printf` not allowing format specifiers to be directly followed by
   alphabetic characters
-  - [#1414](https://github.com/iovisor/bpftrace/pull/1414)
+  - [#1414](https://github.com/bpftrace/bpftrace/pull/1414)
 - Fix `top` and `div` arguments of `print()` not working for Type::avg maps
-  - [#1416](https://github.com/iovisor/bpftrace/pull/1416)
+  - [#1416](https://github.com/bpftrace/bpftrace/pull/1416)
 - Add an option to disable warning messages
-  - [#1444](https://github.com/iovisor/bpftrace/pull/1444)
+  - [#1444](https://github.com/bpftrace/bpftrace/pull/1444)
 - Support scientific notation for integer literals
-  - [#1476](https://github.com/iovisor/bpftrace/pull/1476)
+  - [#1476](https://github.com/bpftrace/bpftrace/pull/1476)
 - List retprobes
-  - [#1484](https://github.com/iovisor/bpftrace/pull/1484)
+  - [#1484](https://github.com/bpftrace/bpftrace/pull/1484)
 - Resolve unknown typedefs using BTF and give a hint when a type cannot be found
-  - [#1485](https://github.com/iovisor/bpftrace/pull/1485)
+  - [#1485](https://github.com/bpftrace/bpftrace/pull/1485)
 - Support multi-matched globbed targets for uprobe and ustd probes
-  - [#1499](https://github.com/iovisor/bpftrace/pull/1499)
+  - [#1499](https://github.com/bpftrace/bpftrace/pull/1499)
 - Positional parameters: support numbers as strings and params as string literals
-  - [#1514](https://github.com/iovisor/bpftrace/pull/1514)
+  - [#1514](https://github.com/bpftrace/bpftrace/pull/1514)
 - Support for tracepoint __data_loc fields
-  - [#1542](https://github.com/iovisor/bpftrace/pull/1542)
+  - [#1542](https://github.com/bpftrace/bpftrace/pull/1542)
 - Set addrspace info for various builtins
-  - [#1504](https://github.com/iovisor/bpftrace/pull/1504)
+  - [#1504](https://github.com/bpftrace/bpftrace/pull/1504)
 - Support watchpoint for kernel space address
-  - [#1552](https://github.com/iovisor/bpftrace/pull/1552)
+  - [#1552](https://github.com/bpftrace/bpftrace/pull/1552)
 - Support for pointer to pointer
-  - [#1557](https://github.com/iovisor/bpftrace/pull/1557)
+  - [#1557](https://github.com/bpftrace/bpftrace/pull/1557)
 - Support for uprobe refcounts
-  - [#1567](https://github.com/iovisor/bpftrace/pull/1567)
+  - [#1567](https://github.com/bpftrace/bpftrace/pull/1567)
 - Add basic options and documentations for fuzzing
-  - [#1601](https://github.com/iovisor/bpftrace/pull/1601)
+  - [#1601](https://github.com/bpftrace/bpftrace/pull/1601)
 - Disable `str($# + 1)`
-  - [#1619](https://github.com/iovisor/bpftrace/issues/1619)
+  - [#1619](https://github.com/bpftrace/bpftrace/issues/1619)
 - Array improvements (support assignment to variables and usage as a map key)
-  - [#1656](https://github.com/iovisor/bpftrace/pull/1656)
+  - [#1656](https://github.com/bpftrace/bpftrace/pull/1656)
 - Add builtin function: `macaddr`
-  - [#1647](https://github.com/iovisor/bpftrace/pull/1647)
+  - [#1647](https://github.com/bpftrace/bpftrace/pull/1647)
 - Add support for usdt arguments utilising the index register and scale
-  - [#1684](https://github.com/iovisor/bpftrace/pull/1684)
+  - [#1684](https://github.com/bpftrace/bpftrace/pull/1684)
 - Add basic mips64 support
-  - [#1599](https://github.com/iovisor/bpftrace/pull/1599)
+  - [#1599](https://github.com/bpftrace/bpftrace/pull/1599)
+- Printing structures
+  - [#1705](https://github.com/bpftrace/bpftrace/pull/1705)
+- Array indexing on pointers
+  - [#1739](https://github.com/bpftrace/bpftrace/pull/1739)
 
 #### Changed
 - Warn if using `print` on `stats` maps with top and div arguments
-  - [#1433](https://github.com/iovisor/bpftrace/pull/1433)
+  - [#1433](https://github.com/bpftrace/bpftrace/pull/1433)
 - Prefer BTF data if available to resolve tracepoint arguments
-  - [#1439](https://github.com/iovisor/bpftrace/pull/1439)
+  - [#1439](https://github.com/bpftrace/bpftrace/pull/1439)
 - Improve error messages for kfunc probe types
-  - [#1451](https://github.com/iovisor/bpftrace/pull/1451)
+  - [#1451](https://github.com/bpftrace/bpftrace/pull/1451)
 - Better handling of empty usdt namespaces
-  - [#1486](https://github.com/iovisor/bpftrace/pull/1486)
+  - [#1486](https://github.com/bpftrace/bpftrace/pull/1486)
 - Switch `nsecs` to `ktime_get_boot_ns`
-  - [#1475](https://github.com/iovisor/bpftrace/pull/1475)
+  - [#1475](https://github.com/bpftrace/bpftrace/pull/1475)
 - Tracepoint __data_loc fields are renamed from `args->data_loc_name` to `args->name`
-  - [#1542](https://github.com/iovisor/bpftrace/pull/1542)
+  - [#1542](https://github.com/bpftrace/bpftrace/pull/1542)
 - Change a part of the message of '-v' output
-  - [#1553](https://github.com/iovisor/bpftrace/pull/1553)
+  - [#1553](https://github.com/bpftrace/bpftrace/pull/1553)
 - Improve tuple assignment error message
-  - [#1563](https://github.com/iovisor/bpftrace/pull/1563)
+  - [#1563](https://github.com/bpftrace/bpftrace/pull/1563)
 - Remove "BTF: using data from ..." message when using -v flag
-  - [#1554](https://github.com/iovisor/bpftrace/pull/1554)
+  - [#1554](https://github.com/bpftrace/bpftrace/pull/1554)
 - Add -q option for quiet
-  - [#1616](https://github.com/iovisor/bpftrace/pull/1616)
+  - [#1616](https://github.com/bpftrace/bpftrace/pull/1616)
 - Optimize unknown/incomplete types resolution
-  - [#1571](https://github.com/iovisor/bpftrace/pull/1571)
+  - [#1571](https://github.com/bpftrace/bpftrace/pull/1571)
 - Do not check size of the format string of `printf`
-  - [#1538](https://github.com/iovisor/bpftrace/pull/1538)
+  - [#1538](https://github.com/bpftrace/bpftrace/pull/1538)
 - Unify semantics of wildcards in probe listing and attachement
-  - [#1549](https://github.com/iovisor/bpftrace/pull/1549)
+  - [#1549](https://github.com/bpftrace/bpftrace/pull/1549)
+- Improve codegen for structs and arrays
+  - [#1705](https://github.com/bpftrace/bpftrace/pull/1705)
+- Do not unpack in-kernel headers if system has BTF
+  - [#1740](https://github.com/bpftrace/bpftrace/pull/1740)
 
 #### Deprecated
 
 #### Removed
 - Disable some kfunc probes whose tracing crashes
-  - [#1432](https://github.com/iovisor/bpftrace/pull/1432)
+  - [#1432](https://github.com/bpftrace/bpftrace/pull/1432)
 
 #### Fixed
 - Fix negative overflow bug and unstable tests in PR #1416
-  - [#1436](https://github.com/iovisor/bpftrace/pull/1436)
+  - [#1436](https://github.com/bpftrace/bpftrace/pull/1436)
 - Fix `print` outputs nothing when used on hist() maps with large top args
-  - [#1437](https://github.com/iovisor/bpftrace/pull/1437)
+  - [#1437](https://github.com/bpftrace/bpftrace/pull/1437)
 - Fix array indexing regression
-  - [#1457](https://github.com/iovisor/bpftrace/pull/1457)
+  - [#1457](https://github.com/bpftrace/bpftrace/pull/1457)
 - Fix type resolution for struct field access via variables
-  - [#1450](https://github.com/iovisor/bpftrace/pull/1450)
+  - [#1450](https://github.com/bpftrace/bpftrace/pull/1450)
 - Fix wrong setting of vmlinux_location.raw when offset kprobe used
-  - [#1530](https://github.com/iovisor/bpftrace/pull/1530)
+  - [#1530](https://github.com/bpftrace/bpftrace/pull/1530)
 - Fix pointer arithmetic for positional parameters
-  - [#1514](https://github.com/iovisor/bpftrace/pull/1514)
+  - [#1514](https://github.com/bpftrace/bpftrace/pull/1514)
 - SEGV when using perf format for stacks
-  - [#1524](https://github.com/iovisor/bpftrace/pull/1524)
+  - [#1524](https://github.com/bpftrace/bpftrace/pull/1524)
 - Fix llvm errors of PositonalParameter
-  - [#1565](https://github.com/iovisor/bpftrace/pull/1565)
+  - [#1565](https://github.com/bpftrace/bpftrace/pull/1565)
 - Error if Positional Params num is zero
-  - [#1568](https://github.com/iovisor/bpftrace/issues/1568)
+  - [#1568](https://github.com/bpftrace/bpftrace/issues/1568)
 - Fix LNOT
-  - [#1570](https://github.com/iovisor/bpftrace/pull/1570)
+  - [#1570](https://github.com/bpftrace/bpftrace/pull/1570)
 - Fix invalid cast handling in tuple
-  - [#1572](https://github.com/iovisor/bpftrace/pull/1572)
+  - [#1572](https://github.com/bpftrace/bpftrace/pull/1572)
 - Check string comparison size
-  - [#1573](https://github.com/iovisor/bpftrace/pull/1573)
+  - [#1573](https://github.com/bpftrace/bpftrace/pull/1573)
 - Fix a possible integer overflow
-  - [#1580](https://github.com/iovisor/bpftrace/pull/1580)
+  - [#1580](https://github.com/bpftrace/bpftrace/pull/1580)
 - Printing of small integers with `printf`
-  - [#1532](https://github.com/iovisor/bpftrace/pull/1532)
+  - [#1532](https://github.com/bpftrace/bpftrace/pull/1532)
 - Fix bitfield access for big endian
-  - [#1628](https://github.com/iovisor/bpftrace/pull/1628)
+  - [#1628](https://github.com/bpftrace/bpftrace/pull/1628)
 - Error if using negative length in str() and buf()
-  - [#1621](https://github.com/iovisor/bpftrace/pull/1621)
+  - [#1621](https://github.com/bpftrace/bpftrace/pull/1621)
 - Only create int type Identifier when it is used in sizeof()
-  - [#1622](https://github.com/iovisor/bpftrace/pull/1622)
+  - [#1622](https://github.com/bpftrace/bpftrace/pull/1622)
 - Check exponent value can be expressed in uint64_t
-  - [#1623](https://github.com/iovisor/bpftrace/pull/1623)
+  - [#1623](https://github.com/bpftrace/bpftrace/pull/1623)
 - Fix tracing of usdt probes across namespaces
-  - [#1637](https://github.com/iovisor/bpftrace/pull/1637)
+  - [#1637](https://github.com/bpftrace/bpftrace/pull/1637)
 - Disable reg() for kfunc
-  - [#1646](https://github.com/iovisor/bpftrace/pull/1646)
+  - [#1646](https://github.com/bpftrace/bpftrace/pull/1646)
 - Fix several undefined behavior
-  - [#1645](https://github.com/iovisor/bpftrace/pull/1645)
+  - [#1645](https://github.com/bpftrace/bpftrace/pull/1645)
 - Fix invalid size crash when using strftime() inside a tuple
-  - [#1658](https://github.com/iovisor/bpftrace/pull/1658)
+  - [#1658](https://github.com/bpftrace/bpftrace/pull/1658)
 - Don't create a tuple if an element size if zero
-  - [#1653](https://github.com/iovisor/bpftrace/pull/1653)
+  - [#1653](https://github.com/bpftrace/bpftrace/pull/1653)
 - Support clear() and delete() on a count()-based map without a key
-  - [#1639](https://github.com/iovisor/bpftrace/pull/1639)
+  - [#1639](https://github.com/bpftrace/bpftrace/pull/1639)
 - Add workaround for too deep or long macros
-  - [#1650](https://github.com/iovisor/bpftrace/pull/1650)
+  - [#1650](https://github.com/bpftrace/bpftrace/pull/1650)
 - Fix attaching to usdt probes in shared libraries
-  - [#1600](https://github.com/iovisor/bpftrace/pull/1600)
+  - [#1600](https://github.com/bpftrace/bpftrace/pull/1600)
 - Fix attaching to multiple usdt probe locations with the same label
-  - [#1681](https://github.com/iovisor/bpftrace/pull/1681)
+  - [#1681](https://github.com/bpftrace/bpftrace/pull/1681)
 - Fix signed extension of usdt arguments to the internal 64-bit integer type
-  - [#1684](https://github.com/iovisor/bpftrace/pull/1684)
+  - [#1684](https://github.com/bpftrace/bpftrace/pull/1684)
 
 #### Tools
 - Hook up execsnoop.bt script onto `execveat` call
-  - [#1490](https://github.com/iovisor/bpftrace/pull/1490)
+  - [#1490](https://github.com/bpftrace/bpftrace/pull/1490)
 - Support new capabilities for capable.bt
-  - [#1498](https://github.com/iovisor/bpftrace/pull/1498)
+  - [#1498](https://github.com/bpftrace/bpftrace/pull/1498)
 - Add disk field to biosnoop
-  - [#1660](https://github.com/iovisor/bpftrace/pull/1660)
+  - [#1660](https://github.com/bpftrace/bpftrace/pull/1660)
 
 #### Documentation
 - Document uptr() and kptr() function
-  - [#1626](https://github.com/iovisor/bpftrace/pull/1626)
+  - [#1626](https://github.com/bpftrace/bpftrace/pull/1626)
 
 ## [0.11.4] 2020-11-14
 
@@ -172,7 +1451,7 @@ bcc 0.17 support release
 ### Changed
 
 Detect 7 arg bpf_attach_uprobe() API
-- [#1589](https://github.com/iovisor/bpftrace/pull/1589)
+- [#1589](https://github.com/bpftrace/bpftrace/pull/1589)
 
 ## [0.11.2] 2020-10-30
 
@@ -181,16 +1460,16 @@ LLVM 11 support release
 ### Added
 
 Add LLVM11 build support
-- [#1578](https://github.com/iovisor/bpftrace/pull/1578)
+- [#1578](https://github.com/bpftrace/bpftrace/pull/1578)
 
 ## [0.11.1] 2020-09-22
 
-Bug fix release for the [Docker build](https://quay.io/repository/iovisor/bpftrace)
+Bug fix release for the [Docker build](https://quay.io/repository/bpftrace/bpftrace)
 
 ### Fixed
 
 - Don't strip END_trigger
-  - [#1513](https://github.com/iovisor/bpftrace/pull/1513)
+  - [#1513](https://github.com/bpftrace/bpftrace/pull/1513)
 
 ## [0.11.0] 2020-07-15
 
@@ -199,103 +1478,103 @@ Bug fix release for the [Docker build](https://quay.io/repository/iovisor/bpftra
 #### Added
 
 - Allow uprobe placement on arbitrary addresses when --unsafe is used
-  - [#1388](https://github.com/iovisor/bpftrace/pull/1388)
+  - [#1388](https://github.com/bpftrace/bpftrace/pull/1388)
 - Support for s390x
-  - [#1241](https://github.com/iovisor/bpftrace/pull/1241)
+  - [#1241](https://github.com/bpftrace/bpftrace/pull/1241)
 - `buf` a new function that makes it possible to safely print arbitrary binary data
-  - [#1107](https://github.com/iovisor/bpftrace/pull/1107)
+  - [#1107](https://github.com/bpftrace/bpftrace/pull/1107)
 - A new function, `sizeof`, which returns the size of an expression, similar to  `sizeof` in C
-  - [#1269](https://github.com/iovisor/bpftrace/pull/1269)
+  - [#1269](https://github.com/bpftrace/bpftrace/pull/1269)
 - C style while loop support, `while ($a < 100) { $a++ }`
-  - [#1066](https://github.com/iovisor/bpftrace/pull/1066)
+  - [#1066](https://github.com/bpftrace/bpftrace/pull/1066)
 - Using a BTF enum value will pull in the entire enum definition
-  - [#1274](https://github.com/iovisor/bpftrace/pull/1274)
+  - [#1274](https://github.com/bpftrace/bpftrace/pull/1274)
 - Add support of using positional params in unroll and increase the unroll limit to 100
-  - [#1286](https://github.com/iovisor/bpftrace/pull/1286)
+  - [#1286](https://github.com/bpftrace/bpftrace/pull/1286)
 - Support for piping scripts in via stdin
-  - [#1310](https://github.com/iovisor/bpftrace/pull/1310)
+  - [#1310](https://github.com/bpftrace/bpftrace/pull/1310)
 - Don't require <linux/types.h> if --btf is specified
-  - [#1315](https://github.com/iovisor/bpftrace/pull/1315)
+  - [#1315](https://github.com/bpftrace/bpftrace/pull/1315)
 - Silence errors about `modprobe` not being found
-  - [#1314](https://github.com/iovisor/bpftrace/pull/1314)
+  - [#1314](https://github.com/bpftrace/bpftrace/pull/1314)
 - With --btf, do not use <linux/types.h> for resolving tracepoint defs
-  - [#1318](https://github.com/iovisor/bpftrace/pull/1318)
+  - [#1318](https://github.com/bpftrace/bpftrace/pull/1318)
 - Add environment variable, BPFTRACE_PERF_RB_PAGES, to tune perf ring buffer size
-  - [#1329](https://github.com/iovisor/bpftrace/pull/1329)
+  - [#1329](https://github.com/bpftrace/bpftrace/pull/1329)
 - Add --usdt-file-activation to activate usdt semaphores by file name
-  - [#1317](https://github.com/iovisor/bpftrace/pull/1317)
+  - [#1317](https://github.com/bpftrace/bpftrace/pull/1317)
 - Introduce `-k` and `-kk` options. Emit a warning when a bpf helper returns an error
-  - [#1276](https://github.com/iovisor/bpftrace/pull/1276)
+  - [#1276](https://github.com/bpftrace/bpftrace/pull/1276)
 - Add tuples to language
-  - [#1326](https://github.com/iovisor/bpftrace/pull/1326)
+  - [#1326](https://github.com/bpftrace/bpftrace/pull/1326)
 - Add support for listing struct/union/enum definitions using BTF
-  - [#1340](https://github.com/iovisor/bpftrace/pull/1340)
+  - [#1340](https://github.com/bpftrace/bpftrace/pull/1340)
 - Add libbpf build into in --info
-  - [#1367](https://github.com/iovisor/bpftrace/pull/1367)
+  - [#1367](https://github.com/bpftrace/bpftrace/pull/1367)
 - Add support for time units `us` and `hz` for probe `interval`
-  - [#1377](https://github.com/iovisor/bpftrace/pull/1377)
+  - [#1377](https://github.com/bpftrace/bpftrace/pull/1377)
 - Add support for non-map print()
-  - [#1381](https://github.com/iovisor/bpftrace/pull/1381)
+  - [#1381](https://github.com/bpftrace/bpftrace/pull/1381)
 - Enable `printf`, `cat` and `system` to have more than 7 arguments
-  - [#1404](https://github.com/iovisor/bpftrace/pull/1404)
+  - [#1404](https://github.com/bpftrace/bpftrace/pull/1404)
 - Enable the `ternary` operator to evaluate builtin calls
-  - [#1405](https://github.com/iovisor/bpftrace/pull/1405)
+  - [#1405](https://github.com/bpftrace/bpftrace/pull/1405)
 
 
 #### Changed
 
 - Require C++17 and CMake 3.8 for building bpftrace
-  - [#1200](https://github.com/iovisor/bpftrace/pull/1200)
-  - [#1259](https://github.com/iovisor/bpftrace/pull/1259)
+  - [#1200](https://github.com/bpftrace/bpftrace/pull/1200)
+  - [#1259](https://github.com/bpftrace/bpftrace/pull/1259)
 - Allow positional parameters in probe attachpoint definitions
-  - [#1328](https://github.com/iovisor/bpftrace/pull/1328)
+  - [#1328](https://github.com/bpftrace/bpftrace/pull/1328)
 - Only list uprobe and usdt probes when `-p` is given
-  - [#1340](https://github.com/iovisor/bpftrace/pull/1340)
+  - [#1340](https://github.com/bpftrace/bpftrace/pull/1340)
 - Remove address space memory limit
-  - [#1358](https://github.com/iovisor/bpftrace/pull/1358)
+  - [#1358](https://github.com/bpftrace/bpftrace/pull/1358)
 
 #### Deprecated
 
 #### Removed
 
 - Drop LLVM 5 support
-  - [#1215](https://github.com/iovisor/bpftrace/issues/1215)
+  - [#1215](https://github.com/bpftrace/bpftrace/issues/1215)
 - Remove the --btf option
-  - [#1669](https://github.com/iovisor/bpftrace/pull/1669)
+  - [#1669](https://github.com/bpftrace/bpftrace/pull/1669)
 
 #### Fixed
 
 - Various big endian related fixes
-  - [#1241](https://github.com/iovisor/bpftrace/pull/1241)
+  - [#1241](https://github.com/bpftrace/bpftrace/pull/1241)
 - Type check the `cond` of if and ternary statements
-  - [#1229](https://github.com/iovisor/bpftrace/pull/1229)
+  - [#1229](https://github.com/bpftrace/bpftrace/pull/1229)
 - Fix usdt reads in various architecture
-  - [#1325](https://github.com/iovisor/bpftrace/pull/1325)
+  - [#1325](https://github.com/bpftrace/bpftrace/pull/1325)
 - Attach to duplicated USDT markers
-  - [#1341](https://github.com/iovisor/bpftrace/pull/1341)
+  - [#1341](https://github.com/bpftrace/bpftrace/pull/1341)
 - Fix `KBUILD_MODNAME`
-  - [#1352](https://github.com/iovisor/bpftrace/pull/1352)
+  - [#1352](https://github.com/bpftrace/bpftrace/pull/1352)
 - Fix `ntop()` not accepting tracepoint arguments
-  - [#1365](https://github.com/iovisor/bpftrace/pull/1365)
+  - [#1365](https://github.com/bpftrace/bpftrace/pull/1365)
 - Fix attaching to usdt probes in multiple binaries
-  - [#1356](https://github.com/iovisor/bpftrace/pull/1356)
+  - [#1356](https://github.com/bpftrace/bpftrace/pull/1356)
 - Decrement usdt semaphore count after bpftrace execution
-  - [#1370](https://github.com/iovisor/bpftrace/pull/1370)
+  - [#1370](https://github.com/bpftrace/bpftrace/pull/1370)
 - Reduce high memory consumption when using usdt semaphore
-  - [#1374](https://github.com/iovisor/bpftrace/pull/1374)
+  - [#1374](https://github.com/bpftrace/bpftrace/pull/1374)
 - Remove registers that are not in struct pt_regs (x86-64)
-  - [#1383](https://github.com/iovisor/bpftrace/issues/1383)
+  - [#1383](https://github.com/bpftrace/bpftrace/issues/1383)
 - Ignore trailing kernel module annotation for k[ret]probe's
-  - [#1413](https://github.com/iovisor/bpftrace/pull/1413)
+  - [#1413](https://github.com/bpftrace/bpftrace/pull/1413)
 
 #### Tools
 
 #### Documentation
 
 - Clean up README
-  - [#1273](https://github.com/iovisor/bpftrace/pull/1273)
+  - [#1273](https://github.com/bpftrace/bpftrace/pull/1273)
 - Add missing `struct` keyword to examples in the one liner tutorial
-  - [#1275](https://github.com/iovisor/bpftrace/pull/1275)
+  - [#1275](https://github.com/bpftrace/bpftrace/pull/1275)
 
 ## [0.10.0] 2020-04-12
 
@@ -348,7 +1627,7 @@ Support for LLVM 9 and LLVM 10 has been added.
 
 #### Docker images
 
-Docker images containing a static build are now available on [quay.io](https://quay.io/repository/iovisor/bpftrace).
+Docker images containing a static build are now available on [quay.io](https://quay.io/repository/bpftrace/bpftrace).
 
 ### All Changes
 
